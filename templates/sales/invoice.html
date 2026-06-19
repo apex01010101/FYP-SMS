@@ -1,0 +1,48 @@
+{% extends "partials/base.html" %}
+{% block title %}{{ sale.invoice_number }}{% endblock %}
+{% block content %}
+<div class="container p-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4" id="invoicePrint">
+            <div class="d-flex justify-content-between mb-4">
+                <div><h4 class="font-weight-bold">SMS — Inventory System</h4></div>
+                <div class="text-right">
+                    <h5 class="font-weight-bold">INVOICE</h5>
+                    <p class="mb-0"><strong>Invoice #:</strong> {{ sale.invoice_number }}</p>
+                    <p class="mb-0"><strong>Date:</strong> {{ sale.sale_date }}</p>
+                    <p class="mb-0"><strong>Customer:</strong> {{ sale.customer_name }}</p>
+                    <p class="mb-0"><strong>Payment:</strong> {{ sale.payment_method }}</p>
+                </div>
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="thead-light"><tr><th>#</th><th>Product</th><th class="text-center">Qty</th><th class="text-right">Unit Price</th><th class="text-right">Disc%</th><th class="text-right">Total</th></tr></thead>
+                    <tbody>
+                        {% for item in sale.items.all %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.product.name }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-right"> Rs. {{ item.sale_price|floatformat:2 }}</td>
+                            <td class="text-right">{{ item.discount|floatformat:0 }}%</td>
+                            <td class="text-right font-weight-bold"> Rs. {{ item.line_total|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="5" class="text-right">Subtotal</td><td class="text-right"> Rs. {{ sale.subtotal|floatformat:2 }}</td></tr>
+                        {% if sale.tax_percent > 0 %}<tr><td colspan="5" class="text-right">Tax ({{ sale.tax_percent }}%)</td><td class="text-right"> Rs. {{ sale.tax_amount|floatformat:2 }}</td></tr>{% endif %}
+                        <tr class="font-weight-bold"><td colspan="5" class="text-right">Grand Total</td><td class="text-right text-success"> Rs. {{ sale.total_amount|floatformat:2 }}</td></tr>
+                        <tr><td colspan="5" class="text-right">Amount Paid</td><td class="text-right text-success"> Rs. {{ sale.paid_amount|floatformat:2 }}</td></tr>
+                        {% if sale.balance > 0 %}<tr class="font-weight-bold table-danger"><td colspan="5" class="text-right">Balance Due</td><td class="text-right"> Rs. {{ sale.balance|floatformat:2 }}</td></tr>{% else %}<tr class="table-success"><td colspan="5" class="text-right">Balance</td><td class="text-right">PAID IN FULL</td></tr>{% endif %}
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white text-right">
+            <button class="btn btn-warning mr-2" onclick="window.print()"><i class="fas fa-print mr-1"></i>Print</button>
+            <a href="{% url 'sale-list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left mr-1"></i>Back</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

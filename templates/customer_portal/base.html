@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.2/css/all.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="{% static 'style.css' %}"/>
+    <title>SMS — {% block title %}{% endblock %}</title>
+</head>
+<body style="background:#f4f6f9;">
+
+<!-- Customer Portal Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#1a1a2e; padding: 12px 24px;">
+    <a class="navbar-brand font-weight-bold" href="{% url 'customer-dashboard' %}">
+        <i class="fas fa-boxes mr-2" style="color:#4099ff;"></i>SMS Shop
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#portalNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="portalNav">
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'customer-dashboard' %}active{% endif %}"
+                   href="{% url 'customer-dashboard' %}">
+                    <i class="fas fa-home mr-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'portal-products' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'portal-products' %}">
+                    <i class="fas fa-store mr-1"></i>Products
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'portal-orders' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'portal-orders' %}">
+                    <i class="fas fa-clipboard-list mr-1"></i>My Orders
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if 'portal-ledger' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'portal-ledger' %}">
+                    <i class="fas fa-file-invoice-dollar mr-1"></i>My Account
+                </a>
+            </li>
+            <li class="nav-item dropdown ml-2">
+                <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">
+                    <i class="fas fa-user-circle mr-1"></i>{{ user.get_full_name|default:user.username }}
+                </a>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="{% url 'user-profile' %}"><i class="fas fa-id-card mr-2"></i>Profile</a>
+                    <div class="dropdown-divider"></div>
+                    <form action="{% url 'user-logout' %}" method="POST">
+                        {% csrf_token %}
+                        <button class="dropdown-item text-danger" type="submit">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </form>
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Flash Messages -->
+{% if messages %}
+<div class="container-fluid px-4 pt-3">
+    {% for msg in messages %}
+    <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags|default:'info' }}{% endif %} alert-dismissible fade show">
+        {{ msg }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% block content %}{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,23 @@
+{% comment %}Shared period filter bar included in every report{% endcomment %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body py-3">
+    <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+      {% for k,v in request.GET.items %}
+        {% if k != 'period' and k != 'from' and k != 'to' %}
+          <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endif %}
+      {% endfor %}
+      <label class="mb-0 font-weight-bold text-muted mr-2" style="font-size:.88rem;">Period:</label>
+      {% for val,lbl in period_choices %}
+      <a href="?period={{ val }}"
+         class="btn btn-sm {% if period == val %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ lbl }}
+      </a>
+      {% endfor %}
+      <input type="date" name="from" class="form-control form-control-sm" style="width:140px;" value="{{ date_from|default:'' }}">
+      <span class="text-muted">to</span>
+      <input type="date" name="to" class="form-control form-control-sm" style="width:140px;" value="{{ date_to|default:'' }}">
+      <button class="btn btn-sm btn-dark" name="period" value="custom">Apply</button>
+    </form>
+  </div>
+</div>

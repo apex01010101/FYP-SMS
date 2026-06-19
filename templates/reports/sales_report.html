@@ -1,0 +1,134 @@
+{% extends "partials/base.html" %}
+{% block title %}Sales Report{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+
+  <!-- Header + Nav Tabs -->
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div><h2 class="text-dark mb-0">Sales Report</h2><p class="text-muted mb-0">{{ period_label }}</p></div>
+    <div class="btn-group">
+      <a href="{% url 'report-sales' %}?period={{ period }}" class="btn btn-primary btn-sm">Sales</a>
+      <a href="{% url 'report-purchase' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Purchase</a>
+      <a href="{% url 'report-expense' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Expense</a>
+      <a href="{% url 'report-profit' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Profit</a>
+    </div>
+  </div>
+
+  <!-- Period Filter -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-3">
+      <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+        <label class="mb-0 font-weight-bold text-muted mr-1" style="font-size:.88rem;">Period:</label>
+        {% for val,lbl in period_choices %}<a href="?period={{ val }}" class="btn btn-sm {% if period == val %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+        <input type="date" name="from" class="form-control form-control-sm" style="width:140px;" value="{{ date_from }}">
+        <span class="text-muted">to</span>
+        <input type="date" name="to" class="form-control form-control-sm" style="width:140px;" value="{{ date_to }}">
+        <button class="btn btn-sm btn-dark" name="period" value="custom">Apply</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-dollar-sign"></i></div><p>Revenue</p><h3> Rs. </h3> <h4>{{ revenue|floatformat:0 }}</h4> </div></div>
+    <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-boxes"></i></div><p>Cost of Goods</p><h3> Rs. </h3> <h4>{{ cogs|floatformat:0 }}</h4> </div></div>
+    <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-info"><div class="icon"><i class="fas fa-chart-line"></i></div><p>Gross Profit</p><h3> Rs. </h3> <h4>{{ gross_profit|floatformat:0 }}</h4> </div></div>
+    <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-primary"><div class="icon"><i class="fas fa-receipt"></i></div><p>{{ invoice_count }} Invoices · Avg Rs. {{ avg_sale|floatformat:0 }}</p><h3>{{ profit_margin }}%</h3> <h4> Margin</h4> </div></div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-chart-bar mr-2 text-primary"></i>Revenue & Profit Trend</h5></div>
+    <div class="card-body"><canvas id="salesChart" height="100"></canvas></div>
+  </div>
+
+  <div class="row">
+    <!-- By Category -->
+    <div class="col-md-5 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-tags mr-2"></i>Sales by Category</h5></div>
+        <div class="card-body p-0">
+          <canvas id="catChart" height="200" class="p-3"></canvas>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="thead-light"><tr><th>Category</th><th class="text-right">Revenue</th><th class="text-right">Profit</th><th class="text-right">Margin</th></tr></thead>
+            <tbody>
+              {% for r in cat_data %}
+              <tr>
+                <td>{{ r.name }}</td>
+                <td class="text-right"> Rs. {{ r.revenue|floatformat:2 }}</td>
+                <td class="text-right text-success"> Rs. {{ r.profit|floatformat:2 }}</td>
+                <td class="text-right"><span class="badge {% if r.margin > 30 %}badge-success{% elif r.margin > 15 %}badge-warning{% else %}badge-danger{% endif %}">{{ r.margin }}%</span></td>
+              </tr>
+              {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No data yet.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice List -->
+    <div class="col-md-7 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 font-weight-bold"><i class="fas fa-list mr-2"></i>Invoice List</h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="exportTableCSV('salesTable','sales_report')"><i class="fas fa-download mr-1"></i>CSV</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0" id="salesTable">
+            <thead class="thead-light"><tr><th>Invoice</th><th>Customer</th><th>Date</th><th class="text-right">Revenue</th><th class="text-right">Profit</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for sale in period_sales %}
+              <tr>
+                <td><span class="badge badge-secondary">{{ sale.invoice_number }}</span></td>
+                <td>{{ sale.customer_name }}</td>
+                <td>{{ sale.sale_date }}</td>
+                <td class="text-right font-weight-bold"> Rs. {{ sale.total_amount|floatformat:2 }}</td>
+                <td class="text-right text-success"> Rs. {{ sale.subtotal|floatformat:2 }}</td>
+                <td>{% if sale.status == 'paid' %}<span class="badge badge-success">Paid</span>{% elif sale.status == 'partial' %}<span class="badge badge-warning">Partial</span>{% else %}<span class="badge badge-danger">Unpaid</span>{% endif %}</td>
+              </tr>
+              {% empty %}<tr><td colspan="6" class="text-center text-muted py-3">No sales in this period.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var period_choices = [["today","Today"],["week","Week"],["month","Month"],["3month","3 Months"],["6month","6 Months"],["all","All Time"]];
+// Trend Chart
+new Chart(document.getElementById("salesChart").getContext("2d"), {
+  type: "bar",
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [
+      { label: "Revenue (Rs.)", data: {{ chart_rev|safe }}, backgroundColor: "rgba(54,162,235,.7)", order: 2 },
+      { label: "Profit (Rs.)",  data: {{ chart_prof|safe }}, type: "line", borderColor: "rgba(75,192,100,1)", backgroundColor: "rgba(75,192,100,.1)", fill: true, tension: .4, order: 1 }
+    ]
+  },
+  options: { responsive: true, plugins: { legend: { position: "top" }}, scales: { y: { beginAtZero: true }}}
+});
+// Category Doughnut
+var catLabels = [{% for r in cat_data %}"{{ r.name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+var catRevs   = [{% for r in cat_data %}{{ r.revenue|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+if (catLabels.length) {
+  new Chart(document.getElementById("catChart").getContext("2d"), {
+    type: "doughnut",
+    data: { labels: catLabels, datasets: [{ data: catRevs, backgroundColor: ["#4099ff","#2ed8b6","#FFB64D","#FF5370","#a29bfe","#fd79a8","#6c5ce7","#00cec9"] }] },
+    options: { responsive: true, plugins: { legend: { position: "bottom" }}}
+  });
+}
+function exportTableCSV(tableId, name) {
+  var rows = Array.from(document.querySelectorAll("#"+tableId+" tr")).map(r =>
+    Array.from(r.querySelectorAll("th,td")).map(c => '"'+c.innerText.trim()+'"').join(",")
+  );
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.join("\n")], {type:"text/csv"}));
+  a.download = name + ".csv"; a.click();
+}
+</script>
+{% endblock %}

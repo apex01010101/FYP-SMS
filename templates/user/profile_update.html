@@ -1,0 +1,97 @@
+{% extends "partials/base.html" %}
+{% block title %}Update Profile{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+
+    {% if user.profile.role == 'customer' %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{% url 'user-profile' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Profile
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-user-edit mr-2"></i>Update Profile
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" enctype="multipart/form-data" action="{% url 'user-profile-update' %}">
+                        {% csrf_token %}
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>First Name</label>
+                                <input type="text" name="first_name" class="form-control"
+                                       value="{{ user.first_name }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Last Name</label>
+                                <input type="text" name="last_name" class="form-control"
+                                       value="{{ user.last_name }}">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ user.email }}">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Phone</label>
+                                <input type="text" name="phone" class="form-control"
+                                       value="{{ user.profile.phone }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Current Password</label>
+                                <input type="password" name="old_password" class="form-control"
+                                       placeholder="Required only if changing password">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>New Password</label>
+                                <input type="password" name="new_password1" class="form-control"
+                                       placeholder="Leave blank to keep current">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Confirm New Password</label>
+                                <input type="password" name="new_password2" class="form-control"
+                                       placeholder="Repeat new password">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Address</label>
+                            <textarea name="address" class="form-control" rows="2">{{ user.profile.address }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Profile Image</label>
+                            <input type="file" name="image" class="form-control-file">
+                            {% if user.profile.image %}
+                            <small class="text-muted">
+                                Current: <img src="{{ user.profile.image.url }}"
+                                              style="width:28px;height:28px;border-radius:50%;object-fit:cover;"
+                                              class="ml-1 border">
+                                — leave blank to keep.
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'user-profile' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

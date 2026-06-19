@@ -1,0 +1,119 @@
+{% extends "partials/base.html" %}
+{% block title %}Expense Report{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div><h2 class="text-dark mb-0">Expense Report</h2><p class="text-muted mb-0">{{ period_label }}</p></div>
+    <div class="btn-group">
+      <a href="{% url 'report-sales' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Sales</a>
+      <a href="{% url 'report-purchase' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Purchase</a>
+      <a href="{% url 'report-expense' %}?period={{ period }}" class="btn btn-primary btn-sm">Expense</a>
+      <a href="{% url 'report-profit' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Profit</a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4"><div class="card-body py-3">
+    <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+      <label class="mb-0 font-weight-bold text-muted mr-1" style="font-size:.88rem;">Period:</label>
+      {% for val,lbl in period_choices %}<a href="?period={{ val }}" class="btn btn-sm {% if period == val %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+      <input type="date" name="from" class="form-control form-control-sm" style="width:140px;" value="{{ date_from }}">
+      <span class="text-muted">to</span>
+      <input type="date" name="to" class="form-control form-control-sm" style="width:140px;" value="{{ date_to }}">
+      <button class="btn btn-sm btn-dark" name="period" value="custom">Apply</button>
+    </form>
+  </div></div>
+
+  <div class="row mb-4">
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-wallet"></i></div><p>Total Expenses</p><h3> Rs. {{ total_exp|floatformat:0 }}</h3></div></div>
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-tags"></i></div><p>Categories Used</p><h3>{{ cat_data|length }}</h3></div></div>
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-primary"><div class="icon"><i class="fas fa-receipt"></i></div><p>Records</p><h3>{{ period_exp|length }}</h3></div></div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-5 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-chart-pie mr-2 text-danger"></i>By Category</h5></div>
+        <div class="card-body"><canvas id="catPie" height="200"></canvas></div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="thead-light"><tr><th>Category</th><th class="text-center">Count</th><th class="text-right">Total</th><th class="text-right">Share</th></tr></thead>
+            <tbody>
+              {% for r in cat_data %}
+              <tr>
+                <td>{{ r.category.name }}</td>
+                <td class="text-center">{{ r.count }}</td>
+                <td class="text-right text-danger font-weight-bold"> Rs. {{ r.total|floatformat:2 }}</td>
+                <td class="text-right"><span class="badge badge-warning">{{ r.pct }}%</span></td>
+              </tr>
+              {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No expenses.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-7 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-chart-bar mr-2"></i>Expense Trend</h5></div>
+        <div class="card-body"><canvas id="expTrend" height="180"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expense Records -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-0 d-flex justify-content-between">
+      <h5 class="mb-0 font-weight-bold">Expense Records</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableCSV('expTable','expense_report')"><i class="fas fa-download mr-1"></i>CSV</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0" id="expTable">
+        <thead class="thead-light"><tr><th>Date</th><th>Category</th><th>Description</th><th class="text-right">Amount</th></tr></thead>
+        <tbody>
+          {% for e in period_exp %}
+          <tr>
+            <td>{{ e.date }}</td>
+            <td><span class="badge badge-category">{{ e.category.name }}</span></td>
+            <td>{{ e.note|default:"—"|truncatechars:60 }}</td>
+            <td class="text-right text-danger font-weight-bold"> Rs. {{ e.amount|floatformat:2 }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No expenses in this period.</td></tr>{% endfor %}
+        </tbody>
+        {% if period_exp %}
+        <tfoot class="font-weight-bold table-light">
+          <tr><td colspan="3" class="text-right">Total</td><td class="text-right text-danger"> Rs. {{ total_exp|floatformat:2 }}</td></tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var period_choices = [["today","Today"],["week","Week"],["month","Month"],["3month","3 Months"],["6month","6 Months"],["all","All Time"]];
+var catLabels = [{% for r in cat_data %}"{{ r.category.name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+var catVals   = [{% for r in cat_data %}{{ r.total|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+if (catLabels.length) {
+  new Chart(document.getElementById("catPie").getContext("2d"), {
+    type: "doughnut",
+    data: { labels: catLabels, datasets: [{ data: catVals, backgroundColor: ["#FF5370","#FFB64D","#4099ff","#2ed8b6","#a29bfe","#fd79a8"] }] },
+    options: { responsive: true, plugins: { legend: { position: "bottom" }}}
+  });
+}
+new Chart(document.getElementById("expTrend").getContext("2d"), {
+  type: "bar",
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [{ label: "Expense (Rs.)", data: {{ chart_exp|safe }}, backgroundColor: "rgba(255,83,112,.7)" }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false }}, scales: { y: { beginAtZero: true }}}
+});
+function exportTableCSV(tableId, name) {
+  var rows = Array.from(document.querySelectorAll("#"+tableId+" tr")).map(r =>
+    Array.from(r.querySelectorAll("th,td")).map(c => '"'+c.innerText.trim()+'"').join(",")
+  );
+  var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.join("\n")], {type:"text/csv"})); a.download = name+".csv"; a.click();
+}
+</script>
+{% endblock %}

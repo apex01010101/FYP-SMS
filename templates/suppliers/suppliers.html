@@ -1,0 +1,88 @@
+{% extends "partials/base.html" %}
+{% block title %}Suppliers{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3"><div class="col-12"><h2 class="text-dark">Suppliers</h2><p class="text-muted">Manage suppliers, purchases and payable ledgers.</p></div></div>
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-primary"><div class="icon"><i class="fas fa-truck"></i></div><p>Total Suppliers</p><h3>{{ total_suppliers }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-file-invoice-dollar"></i></div><p>Total Payable</p><h3> Rs. {{ total_payable|floatformat:0 }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-shopping-cart"></i></div><p>This Month</p><h3> Rs. {{ purchases_this_month|floatformat:0 }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-boxes"></i></div><p>Active</p><h3>{{ active_suppliers }}</h3></div></div>
+    </div>
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                    <h5 class="text-dark mb-2 mb-md-0"><i class="fas fa-list mr-2"></i>Supplier List</h5>
+                    <form method="GET" class="d-flex" style="gap:6px;">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.GET.q }}" style="width:180px;">
+                        <button class="btn btn-secondary btn-sm">Go</button>
+                    </form>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light"><tr><th>#</th><th>Supplier</th><th>Phone</th><th>Total Purchased</th><th>Paid</th><th>Balance Due</th><th class="text-center">Actions</th></tr></thead>
+                        <tbody>
+                            {% for s in suppliers %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td><span class="font-weight-bold">{{ s.name }}</span><br><small class="text-muted">{{ s.address|truncatechars:30 }}</small></td>
+                                <td>{{ s.phone|default:"—" }}</td>
+                                <td> Rs. {{ s.total_purchased|floatformat:2 }}</td>
+                                <td class="text-success font-weight-bold"> Rs. {{ s.total_paid|floatformat:2 }}</td>
+                                <td>{% if s.balance_due > 0 %}<span class="text-danger font-weight-bold"> Rs. {{ s.balance_due|floatformat:2 }}</span>{% else %}<span class="text-muted"> Rs. 0</span>{% endif %}</td>
+                                <td class="text-center">
+                                    <a href="{% url "supplier-ledger" s.pk %}" class="btn btn-sm btn-outline-info mr-1" title="View Ledger"><i class="fas fa-book"></i></a>
+                                    <button class="btn btn-sm btn-outline-success mr-1" title="New Purchase" onclick="setSupplier({{ s.pk }})" data-toggle="modal" data-target="#purchaseModal"><i class="fas fa-cart-plus"></i></button>
+                                    {% if s.balance_due > 0 %}
+                                    <button class="btn btn-sm btn-outline-warning mr-1" title="Pay" onclick="setSupPay({{ s.pk }},'{{ s.name|escapejs }}')" data-toggle="modal" data-target="#paySupModal"><i class="fas fa-money-bill-wave"></i></button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-primary mr-1" title="Edit" onclick="openEditSup({{ s.pk }},'{{ s.name|escapejs }}','{{ s.phone }}','{{ s.address|escapejs }}','{{ s.notes|escapejs }}')" data-toggle="modal" data-target="#editSupModal"><i class="fas fa-edit"></i></button>
+                                    <form method="POST" action="{% url 'supplier-delete' s.pk %}" style="display:inline;" onsubmit="return confirm('Delete {{ s.name }}?')">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash-alt"></i></button></form>
+                                </td>
+                            </tr>
+                            {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No suppliers yet.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-bolt mr-2 text-warning"></i>Quick Actions</h5></div>
+                <div class="card-body pt-0">
+                    <button class="btn btn-action btn-add-sale" data-toggle="modal" data-target="#addSupModal"><i class="fas fa-plus-circle mr-2"></i>Add Supplier</button>
+                    <button class="btn btn-action btn-update-stock" data-toggle="modal" data-target="#purchaseModal"><i class="fas fa-cart-plus mr-2"></i>New Purchase</button>
+                </div>
+            </div>
+            {% if top_suppliers %}<div class="card shadow-sm border-0"><div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-star mr-1 text-warning"></i>Top Suppliers</h5></div>
+            <ul class="list-group list-group-flush">{% for s in top_suppliers %}<li class="list-group-item d-flex justify-content-between align-items-center"><div><span class="font-weight-bold d-block" style="font-size:.88rem;">{{ s.name }}</span><small class="text-muted">{{ s.purchase_set.count }} purchases</small></div><span class="badge badge-primary badge-pill px-3"> Rs. {{ s.total_purchased|floatformat:0 }}</span></li>{% endfor %}</ul></div>{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Supplier -->
+<div class="modal fade" id="addSupModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Add Supplier</h5><button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><form method="POST" action="{% url 'supplier-add' %}">{% csrf_token %}<div class="form-row"><div class="form-group col-md-6"><label>Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required></div><div class="form-group col-md-6"><label>Phone</label><input type="text" name="phone" class="form-control"></div></div><div class="form-group"><label>Address</label><textarea name="address" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div><div class="modal-footer px-0 pb-0"><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>Save</button></div></form></div></div></div></div>
+
+<!-- Edit Supplier -->
+<div class="modal fade" id="editSupModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-primary text-white"><h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Edit Supplier</h5><button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><form method="POST" id="editSupForm" action=""><input type="hidden" name="_method" value="POST">{% csrf_token %}<div class="form-row"><div class="form-group col-md-6"><label>Name</label><input type="text" name="name" id="esName" class="form-control"></div><div class="form-group col-md-6"><label>Phone</label><input type="text" name="phone" id="esPhone" class="form-control"></div></div><div class="form-group"><label>Address</label><textarea name="address" id="esAddress" class="form-control" rows="2"></textarea></div><div class="form-group"><label>Notes</label><textarea name="notes" id="esNotes" class="form-control" rows="2"></textarea></div><div class="modal-footer px-0 pb-0"><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Update</button></div></form></div></div></div></div>
+
+<!-- New Purchase -->
+<div class="modal fade" id="purchaseModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-cart-plus mr-2"></i>New Purchase — Stock In</h5><button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><form method="POST" action="{% url 'purchase-add' %}">{% csrf_token %}<div class="form-row mb-2"><div class="form-group col-md-4"><label>Supplier <span class="text-danger">*</span></label><select name="supplier" id="purSupplierSel" class="form-control" required><option value="">Select...</option>{% for s in suppliers %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select></div><div class="form-group col-md-4"><label>Invoice Ref #</label><input type="text" name="invoice_ref" class="form-control"></div><div class="form-group col-md-4"><label>Payment Method</label><select name="payment_method" class="form-control"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option></select></div></div>
+<div class="table-container mb-3"><div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">Items Received</h6><button type="button" class="btn btn-sm btn-success" onclick="addPurRow()"><i class="fas fa-plus"></i> Add</button></div><div class="table-responsive"><table class="table table-sm"><thead class="thead-light"><tr><th style="width:40%">Product</th><th style="width:20%">Qty</th><th style="width:20%">Cost Price (Rs.)</th><th style="width:15%">Subtotal</th><th></th></tr></thead><tbody id="purBody"><tr><td><select name="product[]" class="form-control form-control-sm"><option value="">Select...</option>{% for p in products %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}</select></td><td><input type="number" name="quantity[]" class="form-control form-control-sm pur-qty" min="1" oninput="calcPur(this)"></td><td><input type="number" name="cost_price[]" class="form-control form-control-sm pur-cost" step="0.01" oninput="calcPur(this)"></td><td><span class="pur-sub font-weight-bold"> Rs. 0.00</span></td><td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removePurRow(this)"><i class="fas fa-times"></i></button></td></tr></tbody></table></div><div class="d-flex justify-content-end mt-1"><h5 class="mr-3 mt-1">Total:</h5><h4 class="text-success font-weight-bold" id="purTotal"> Rs. 0.00</h4></div></div>
+<div class="form-row"><div class="form-group col-md-4"><label>Amount Paid (Rs.)</label><input type="number" name="paid_amount" class="form-control" step="0.01" value="0" oninput="calcPurBal()"></div><div class="form-group col-md-4"><label>Balance Due (Rs.)</label><input type="text" id="purBal" class="form-control" value="0.00" readonly style="background:#fff3cd;font-weight:bold;"></div><div class="form-group col-md-4"><label>Notes</label><input type="text" name="notes" class="form-control"></div></div>
+<div class="modal-footer px-0 pb-0"><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button><button type="submit" class="btn btn-warning text-white"><i class="fas fa-save mr-1"></i>Save Purchase</button></div></form></div></div></div></div>
+
+<!-- Pay Supplier -->
+<div class="modal fade" id="paySupModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-warning text-white"><h5 class="modal-title"><i class="fas fa-money-bill-wave mr-2"></i>Pay Supplier — <span id="paySupName"></span></h5><button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"><form method="POST" action="{% url 'supplier-payment' %}">{% csrf_token %}<input type="hidden" name="supplier" id="paySupId"><div class="form-group"><label>Amount (Rs.) <span class="text-danger">*</span></label><input type="number" name="amount" class="form-control" step="0.01" required></div><div class="form-group"><label>Payment Method</label><select name="payment_method" class="form-control"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option></select></div><div class="form-group"><label>Date</label><input type="date" name="payment_date" class="form-control"></div><div class="modal-footer px-0 pb-0"><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button><button type="submit" class="btn btn-warning text-white"><i class="fas fa-save mr-1"></i>Save</button></div></form></div></div></div></div>
+{% endblock %}
+{% block extra_js %}<script>
+function setSupplier(pk) { document.getElementById('purSupplierSel').value = pk; }
+function openEditSup(pk,name,phone,address,notes) { document.getElementById('esName').value=name; document.getElementById('esPhone').value=phone; document.getElementById('esAddress').value=address; document.getElementById('esNotes').value=notes; document.getElementById('editSupForm').action='/suppliers/edit/'+pk+'/'; }
+function setSupPay(pk,name) { document.getElementById('paySupId').value=pk; document.getElementById('paySupName').textContent=name; }
+function addPurRow() { var b=document.getElementById('purBody'); var r=b.rows[0].cloneNode(true); r.querySelectorAll('input').forEach(i=>i.value=''); r.querySelector('select').selectedIndex=0; r.querySelector('.pur-sub').textContent='Rs. 0.00'; b.appendChild(r); }
+function removePurRow(btn) { var b=document.getElementById('purBody'); if(b.rows.length>1){btn.closest('tr').remove();updatePurTotal();} }
+function calcPur(input) { var row=input.closest('tr'); var qty=parseFloat(row.querySelector('.pur-qty').value)||0; var cost=parseFloat(row.querySelector('.pur-cost').value)||0; row.querySelector('.pur-sub').textContent='Rs. '+(qty*cost).toFixed(2); updatePurTotal(); }
+function updatePurTotal() { var t=0; document.querySelectorAll('.pur-sub').forEach(el=>t+=parseFloat(el.textContent.replace('Rs. ',''))||0); document.getElementById('purTotal').textContent='Rs. '+t.toFixed(2); calcPurBal(); }
+function calcPurBal() { var t=parseFloat(document.getElementById('purTotal').textContent.replace('Rs. ',''))||0; var paid=parseFloat(document.querySelector('[name="paid_amount"]')?document.querySelector('[name="paid_amount"]').value:0)||0; document.getElementById('purBal').value=Math.max(t-paid,0).toFixed(2); }
+</script>{% endblock %}

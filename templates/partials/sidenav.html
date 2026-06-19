@@ -1,0 +1,68 @@
+<nav id="sidebar">
+    <div class="sidebar-header">
+        <h3><i class="fas fa-boxes"></i> SMS</h3>
+        <small>Inventory System</small>
+    </div>
+    <ul class="list-unstyled components">
+        <li>
+            <a href="{% url 'dashboard-index' %}"
+               class="{% if request.resolver_match.url_name == 'dashboard-index' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'product-list' %}"
+               class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-box-open"></i> Products
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'customer-list' %}"
+               class="{% if 'customer' in request.resolver_match.url_name and 'portal' not in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-users"></i> Customers
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'supplier-list' %}"
+               class="{% if 'supplier' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-truck"></i> Suppliers
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'sale-list' %}"
+               class="{% if request.resolver_match.url_name == 'sale-list' %}active{% endif %}">
+                <i class="fas fa-shopping-cart"></i> Sales
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'order-list' %}"
+               class="{% if 'order' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-clipboard-list"></i> Orders
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'expense-list' %}"
+               class="{% if request.resolver_match.url_name == 'expense-list' %}active{% endif %}">
+                <i class="fas fa-wallet"></i> Expenses
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'accounting-index' %}"
+               class="{% if 'accounting' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-receipt"></i> Accounting
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'reports-index' %}"
+               class="{% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Reports
+            </a>
+            <ul class="list-unstyled" style="padding-left:30px;">
+                <li><a href="{% url 'report-sales' %}" style="font-size:.82rem;padding:5px 10px;" class="{% if request.resolver_match.url_name == 'report-sales' %}active{% endif %}"><i class="fas fa-shopping-cart mr-1"></i>Sales</a></li>
+                <li><a href="{% url 'report-purchase' %}" style="font-size:.82rem;padding:5px 10px;" class="{% if request.resolver_match.url_name == 'report-purchase' %}active{% endif %}"><i class="fas fa-truck mr-1"></i>Purchase</a></li>
+                <li><a href="{% url 'report-expense' %}" style="font-size:.82rem;padding:5px 10px;" class="{% if request.resolver_match.url_name == 'report-expense' %}active{% endif %}"><i class="fas fa-wallet mr-1"></i>Expense</a></li>
+                <li><a href="{% url 'report-profit' %}" style="font-size:.82rem;padding:5px 10px;" class="{% if request.resolver_match.url_name == 'report-profit' %}active{% endif %}"><i class="fas fa-piggy-bank mr-1"></i>Profit</a></li>
+            </ul>
+        </li>
+    </ul>
+</nav>

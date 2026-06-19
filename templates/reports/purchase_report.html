@@ -1,0 +1,138 @@
+{% extends "partials/base.html" %}
+{% block title %}Purchase Report{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div><h2 class="text-dark mb-0">Purchase Report</h2><p class="text-muted mb-0">{{ period_label }}</p></div>
+    <div class="btn-group">
+      <a href="{% url 'report-sales' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Sales</a>
+      <a href="{% url 'report-purchase' %}?period={{ period }}" class="btn btn-primary btn-sm">Purchase</a>
+      <a href="{% url 'report-expense' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Expense</a>
+      <a href="{% url 'report-profit' %}?period={{ period }}" class="btn btn-outline-secondary btn-sm">Profit</a>
+    </div>
+  </div>
+
+  <!-- Period Filter -->
+  <div class="card shadow-sm border-0 mb-4"><div class="card-body py-3">
+    <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+      <label class="mb-0 font-weight-bold text-muted mr-1" style="font-size:.88rem;">Period:</label>
+      {% for val,lbl in period_choices %}<a href="?period={{ val }}" class="btn btn-sm {% if period == val %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ lbl }}</a>{% endfor %}
+      <input type="date" name="from" class="form-control form-control-sm" style="width:140px;" value="{{ date_from }}">
+      <span class="text-muted">to</span>
+      <input type="date" name="to" class="form-control form-control-sm" style="width:140px;" value="{{ date_to }}">
+      <button class="btn btn-sm btn-dark" name="period" value="custom">Apply</button>
+    </form>
+  </div></div>
+
+  <!-- KPI Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-dolly-flatbed"></i></div><p>Total Purchased</p><h3> Rs. {{ total_purchased|floatformat:0 }}</h3></div></div>
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-check-circle"></i></div><p>Total Paid</p><h3> Rs. {{ total_paid|floatformat:0 }}</h3></div></div>
+    <div class="col-md-4 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-file-invoice-dollar"></i></div><p>Balance Due</p><h3> Rs. {{ total_due|floatformat:0 }}</h3></div></div>
+  </div>
+
+  <!-- Purchase Trend Chart -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-chart-bar mr-2 text-warning"></i>Purchase Trend</h5></div>
+    <div class="card-body"><canvas id="purChart" height="100"></canvas></div>
+  </div>
+
+  <div class="row">
+    <!-- By Supplier -->
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0 d-flex justify-content-between">
+          <h5 class="mb-0 font-weight-bold"><i class="fas fa-truck mr-2"></i>By Supplier</h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="exportTableCSV('supTable','purchase_by_supplier')"><i class="fas fa-download mr-1"></i>CSV</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0" id="supTable">
+            <thead class="thead-light"><tr><th>Supplier</th><th class="text-center">Orders</th><th class="text-right">Total</th><th class="text-right">Paid</th><th class="text-right">Due</th></tr></thead>
+            <tbody>
+              {% for r in sup_data %}
+              <tr>
+                <td class="font-weight-bold">{{ r.supplier.name }}</td>
+                <td class="text-center">{{ r.count }}</td>
+                <td class="text-right"> Rs. {{ r.total|floatformat:2 }}</td>
+                <td class="text-right text-success"> Rs. {{ r.paid|floatformat:2 }}</td>
+                <td class="text-right {% if r.due > 0 %}text-danger font-weight-bold{% else %}text-muted{% endif %}"> Rs. {{ r.due|floatformat:2 }}</td>
+              </tr>
+              {% empty %}<tr><td colspan="5" class="text-center text-muted py-3">No purchases.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Most Purchased Products -->
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0 d-flex justify-content-between">
+          <h5 class="mb-0 font-weight-bold"><i class="fas fa-boxes mr-2"></i>Most Purchased Products</h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="exportTableCSV('prodTable','purchase_by_product')"><i class="fas fa-download mr-1"></i>CSV</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0" id="prodTable">
+            <thead class="thead-light"><tr><th>Product</th><th class="text-center">Qty</th><th class="text-right">Total Spent</th><th class="text-right">Avg Cost</th></tr></thead>
+            <tbody>
+              {% for r in prod_data %}
+              <tr>
+                <td class="font-weight-bold">{{ r.product.name }}</td>
+                <td class="text-center">{{ r.qty }}</td>
+                <td class="text-right"> Rs. {{ r.spent|floatformat:2 }}</td>
+                <td class="text-right text-muted"> Rs. {{ r.avg_cost|floatformat:2 }}</td>
+              </tr>
+              {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No purchases.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplier Bar Chart -->
+  {% if sup_data %}
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold">Supplier Comparison</h5></div>
+    <div class="card-body"><canvas id="supBarChart" height="120"></canvas></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var period_choices = [["today","Today"],["week","Week"],["month","Month"],["3month","3 Months"],["6month","6 Months"],["all","All Time"]];
+new Chart(document.getElementById("purChart").getContext("2d"), {
+  type: "bar",
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [{ label: "Purchase Spend (Rs.)", data: {{ chart_pur|safe }}, backgroundColor: "rgba(255,182,77,.8)", borderColor: "rgba(255,182,77,1)", borderWidth: 1 }]
+  },
+  options: { responsive: true, plugins: { legend: { position: "top" }}, scales: { y: { beginAtZero: true }}}
+});
+{% if sup_data %}
+var supNames = [{% for r in sup_data %}"{{ r.supplier.name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+var supTotals = [{% for r in sup_data %}{{ r.total|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+var supPaid   = [{% for r in sup_data %}{{ r.paid|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+new Chart(document.getElementById("supBarChart").getContext("2d"), {
+  type: "bar",
+  data: {
+    labels: supNames,
+    datasets: [
+      { label: "Total Purchased", data: supTotals, backgroundColor: "rgba(255,182,77,.8)" },
+      { label: "Paid",            data: supPaid,   backgroundColor: "rgba(46,216,182,.8)" }
+    ]
+  },
+  options: { responsive: true, plugins: { legend: { position: "top" }}, scales: { y: { beginAtZero: true }}}
+});
+{% endif %}
+function exportTableCSV(tableId, name) {
+  var rows = Array.from(document.querySelectorAll("#"+tableId+" tr")).map(r =>
+    Array.from(r.querySelectorAll("th,td")).map(c => '"'+c.innerText.trim()+'"').join(",")
+  );
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([rows.join("\n")], {type:"text/csv"}));
+  a.download = name + ".csv"; a.click();
+}
+</script>
+{% endblock %}

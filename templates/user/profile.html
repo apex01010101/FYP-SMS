@@ -1,0 +1,75 @@
+{% extends "partials/base.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+
+    {% if user.profile.role == 'customer' %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{% url 'customer-dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left mr-1"></i> Back to My Dashboard
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-id-card mr-2"></i>My Profile</span>
+                    <a href="{% url 'user-profile-update' %}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-edit mr-1"></i>Edit
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row align-items-center mb-4">
+                        <div class="col-auto">
+                            <img src="{{ user.profile.image.url }}"
+                                 class="img-thumbnail rounded-circle"
+                                 style="width:90px;height:90px;object-fit:cover;">
+                        </div>
+                        <div class="col">
+                            <h5 class="mb-1 font-weight-bold">{{ user.get_full_name|default:user.username }}</h5>
+                            <span class="badge badge-{% if user.is_superuser %}danger{% elif user.profile.role == 'seller' %}primary{% else %}success{% endif %} px-3 py-1">
+                                {{ user.profile.role|capfirst }}
+                            </span>
+                        </div>
+                    </div>
+                    <table class="table table-borderless table-sm mb-0">
+                        <tr>
+                            <th style="width:35%;color:#6c757d;font-weight:500;">Username</th>
+                            <td>{{ user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th style="color:#6c757d;font-weight:500;">Email</th>
+                            <td>{{ user.email|default:"—" }}</td>
+                        </tr>
+                        <tr>
+                            <th style="color:#6c757d;font-weight:500;">Phone</th>
+                            <td>{{ user.profile.phone|default:"—" }}</td>
+                        </tr>
+                        <tr>
+                            <th style="color:#6c757d;font-weight:500;">Address</th>
+                            <td>{{ user.profile.address|default:"—" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="card-footer bg-white d-flex justify-content-between align-items-center" style="border-top:1px solid #f0f0f0;">
+                    {% if user.profile.role == 'customer' %}
+                    <a href="{% url 'customer-dashboard' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-home mr-1"></i>My Dashboard
+                    </a>
+                    {% else %}
+                    <span></span>
+                    {% endif %}
+                    <a href="{% url 'user-profile-update' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit mr-1"></i>Update Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

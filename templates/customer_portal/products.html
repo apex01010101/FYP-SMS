@@ -1,0 +1,169 @@
+{% extends "customer_portal/base.html" %}
+{% block title %}Browse Products{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-dark mb-1">Browse Products</h2>
+                <p class="text-muted mb-0">Browse our catalog and place your order.</p>
+            </div>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#placeOrderModal">
+                <i class="fas fa-shopping-cart mr-2"></i>Place Order
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:10px;">
+                <input type="text" name="q" class="form-control" placeholder="Search products..." value="{{ request.GET.q }}" style="max-width:250px;">
+                <select name="category" class="form-control" style="max-width:180px;">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.pk }}" {% if request.GET.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-secondary"><i class="fas fa-search mr-1"></i>Search</button>
+                <a href="{% url 'portal-products' %}" class="btn btn-outline-secondary">Clear</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="row">
+        {% for product in products %}
+
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card portal-card h-100">
+                <div class="product-card-img">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold mb-1">{{ product.name }}</h6>
+                    <p class="text-muted mb-2" style="font-size:.82rem;">
+                        <span class="badge badge-category">{{ product.category.name|default:"General" }}</span>
+                    </p>
+                    {% if product.description %}
+                    <p class="text-muted" style="font-size:.82rem;">{{ product.description|truncatechars:60 }}</p>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="font-weight-bold text-success" style="font-size:1.1rem;"> Rs. {{ product.sale_price|floatformat:2 }}</span>
+                        <!-- <small class="text-muted">{{ product.current_stock }} in stock</small> -->
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 pt-0">
+                    <button class="btn btn-primary btn-block btn-sm"
+                            onclick="addToOrder({{ product.pk }}, '{{ product.name|escapejs }}', '{{ product.sale_price }}')"
+                            data-toggle="modal" data-target="#placeOrderModal">
+                        <i class="fas fa-cart-plus mr-1"></i>Order This
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No products available right now.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- MODAL: Place Order -->
+<div class="modal fade" id="placeOrderModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-shopping-cart mr-2"></i>Place Order</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'portal-place-order' %}">
+                    {% csrf_token %}
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm" id="orderItemsTable">
+                            <thead class="thead-light">
+                                <tr><th style="width:50%">Product</th><th style="width:25%">Qty</th><th style="width:20%">Unit Price</th><th style="width:5%"></th></tr>
+                            </thead>
+                            <tbody id="orderItemsBody">
+                                <tr>
+                                    <td>
+                                        <select name="product[]" class="form-control form-control-sm" onchange="showPrice(this)">
+                                            <option value="">Select product...</option>
+                                            {% for p in products %}
+                                                <option value="{{ p.pk }}" data-price="{{ p.sale_price }}"> Rs. {{ p.sale_price }} — {{ p.name }}</option>
+                                            
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="quantity[]" class="form-control form-control-sm" min="1" value="1"></td>
+                                    <td><span class="unit-price text-muted">—</span></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeOrderRow(this)"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-success mb-3" onclick="addOrderRow()">
+                        <i class="fas fa-plus mr-1"></i>Add Another Item
+                    </button>
+                    <div class="form-group">
+                        <label>Notes / Special Instructions</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Any delivery notes..."></textarea>
+                    </div>
+                    <div class="alert alert-info py-2" style="font-size:.85rem;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Your order will be reviewed and confirmed by our team. You'll see it in "My Orders".
+                    </div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane mr-1"></i>Submit Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function addToOrder(pk, name, price) {
+    var body = document.getElementById('orderItemsBody');
+    var lastRow = body.querySelector('tr:last-child');
+    var sel = lastRow.querySelector('select');
+    // If last row is empty, fill it; else add new row
+    if (!sel.value) {
+        sel.value = pk;
+        lastRow.querySelector('.unit-price').textContent = 'Rs. ' + parseFloat(price).toFixed(2);
+    } else {
+        addOrderRow();
+        var newSel = body.querySelector('tr:last-child select');
+        newSel.value = pk;
+        body.querySelector('tr:last-child .unit-price').textContent = 'Rs. ' + parseFloat(price).toFixed(2);
+    }
+}
+function addOrderRow() {
+    var body  = document.getElementById('orderItemsBody');
+    var first = body.rows[0].cloneNode(true);
+    first.querySelector('select').selectedIndex = 0;
+    first.querySelector('input[type="number"]').value = '1';
+    first.querySelector('.unit-price').textContent = '—';
+    body.appendChild(first);
+}
+function removeOrderRow(btn) {
+    var body = document.getElementById('orderItemsBody');
+    if (body.rows.length > 1) btn.closest('tr').remove();
+}
+function showPrice(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    var row = sel.closest('tr');
+    if (opt.value) {
+        row.querySelector('.unit-price').textContent = 'Rs. ' + parseFloat(opt.dataset.price).toFixed(2);
+    } else {
+        row.querySelector('.unit-price').textContent = '—';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "partials/base.html" %}
+{% block title %}Supplier Ledger — {{ supplier.name }}{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-dark mb-0">Ledger — {{ supplier.name }}</h2>
+                <p class="text-muted mb-0">Complete purchase and payment history with running balance.</p>
+            </div>
+            <a href="{% url 'supplier-list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>Back</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-dolly-flatbed"></i></div><p>Total Purchased</p><h3> Rs. </h3> <h4> {{ supplier.total_purchased|floatformat:2 }} </h4> </div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-check-circle"></i></div><p>Total Paid</p><h3> Rs. </h3> <h4> {{ supplier.total_paid|floatformat:2 }} </h4> </div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-hand-holding-usd"></i></div><p>Balance Due</p><h3> Rs. </h3> <h4> {{ supplier.balance_due|floatformat:2 }} </h4> </div></div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm border-0 h-100 d-flex flex-column justify-content-center p-3">
+                <p class="text-muted mb-1" style="font-size:.85rem;">Supplier Info</p>
+                <p class="mb-1 font-weight-bold">{{ supplier.name }}</p>
+                <p class="mb-1 text-muted" style="font-size:.85rem;"><i class="fas fa-phone mr-1"></i>{{ supplier.phone|default:"—" }}</p>
+                <p class="mb-0 text-muted" style="font-size:.85rem;"><i class="fas fa-map-marker-alt mr-1"></i>{{ supplier.address|truncatechars:30|default:"—" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                <label class="mb-0 font-weight-bold text-muted" style="font-size:.88rem;">Filter by date:</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="{{ date_from }}" style="width:145px;">
+                <span class="text-muted">to</span>
+                <input type="date" name="to" class="form-control form-control-sm" value="{{ date_to }}" style="width:145px;">
+                <button class="btn btn-sm btn-primary">Apply</button>
+                <a href="{% url 'supplier-ledger' supplier.pk %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                <button type="button" class="btn btn-sm btn-outline-success ml-auto" onclick="exportTableCSV('ledgerTable','supplier_ledger_{{ supplier.name|slugify }}')">
+                    <i class="fas fa-download mr-1"></i>Export CSV
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if supplier.balance_due > 0 %}
+    <div class="alert alert-warning mb-4">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        Outstanding balance of <strong> Rs. {{ supplier.balance_due|floatformat:2 }}</strong> is due to {{ supplier.name }}.
+        <button class="btn btn-sm btn-warning ml-3" onclick="setSupPay({{ supplier.pk }},'{{ supplier.name|escapejs }}')"
+                data-toggle="modal" data-target="#paySupModal">
+            <i class="fas fa-money-bill-wave mr-1"></i>Record Payment
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Ledger Table -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-0">
+            <h5 class="mb-0 font-weight-bold"><i class="fas fa-book mr-2"></i>Transaction Ledger</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0" id="ledgerTable">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Reference</th>
+                        <th class="text-right">Purchase (Dr)</th>
+                        <th class="text-right">Payment (Cr)</th>
+                        <th class="text-right">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr class="{% if entry.type == 'payment' %}table-success{% endif %}">
+                        <td>{{ entry.date }}</td>
+                        <td>{{ entry.description }}</td>
+                        <td><span class="badge badge-secondary">{{ entry.reference }}</span></td>
+                        <td class="text-right">
+                            {% if entry.debit > 0 %}
+                            <span class="text-danger font-weight-bold"> Rs. {{ entry.debit|floatformat:2 }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if entry.credit > 0 %}
+                            <span class="text-success font-weight-bold"> Rs. {{ entry.credit|floatformat:2 }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="text-right font-weight-bold {% if entry.balance > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            Rs. {{ entry.balance|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No transactions yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+                {% if entries %}
+                <tfoot class="font-weight-bold table-light">
+                    <tr>
+                        <td colspan="3" class="text-right">Closing Balance</td>
+                        <td class="text-right text-danger"> Rs. {{ supplier.total_purchased|floatformat:2 }}</td>
+                        <td class="text-right text-success"> Rs. {{ supplier.total_paid|floatformat:2 }}</td>
+                        <td class="text-right {% if supplier.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+                            Rs. {{ supplier.balance_due|floatformat:2 }}
+                        </td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pay Supplier Modal -->
+<div class="modal fade" id="paySupModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title"><i class="fas fa-money-bill-wave mr-2"></i>Pay Supplier — <span id="paySupName"></span></h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'supplier-payment' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="supplier" id="paySupId">
+                    <div class="form-group"><label>Amount (Rs.)</label><input type="number" name="amount" class="form-control" step="0.01" required></div>
+                    <div class="form-group"><label>Payment Method</label>
+                        <select name="payment_method" class="form-control"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option></select>
+                    </div>
+                    <div class="form-group"><label>Date</label><input type="date" name="payment_date" class="form-control"></div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning text-white"><i class="fas fa-save mr-1"></i>Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function setSupPay(pk, name) {
+    document.getElementById("paySupId").value = pk;
+    document.getElementById("paySupName").textContent = name;
+}
+function exportTableCSV(tableId, name) {
+    var rows = Array.from(document.querySelectorAll("#"+tableId+" tr")).map(r =>
+        Array.from(r.querySelectorAll("th,td")).map(c => '"'+c.innerText.trim()+'"').join(",")
+    );
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([rows.join("\n")], {type:"text/csv"}));
+    a.download = name + ".csv"; a.click();
+}
+</script>
+{% endblock %}

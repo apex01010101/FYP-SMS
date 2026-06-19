@@ -1,0 +1,542 @@
+{% extends "partials/base.html" %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="text-dark">Reports</h2>
+            <p class="text-muted">Generate, filter and export business reports.</p>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom">
+            <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="sales-report-tab" data-toggle="tab"
+                       href="#salesReport" role="tab">
+                        <i class="fas fa-shopping-cart mr-1"></i>Sales
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="inventory-report-tab" data-toggle="tab"
+                       href="#inventoryReport" role="tab">
+                        <i class="fas fa-boxes mr-1"></i>Inventory
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="purchase-report-tab" data-toggle="tab"
+                       href="#purchaseReport" role="tab">
+                        <i class="fas fa-truck mr-1"></i>Purchase
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="customer-report-tab" data-toggle="tab"
+                       href="#customerReport" role="tab">
+                        <i class="fas fa-users mr-1"></i>Customer
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body">
+            <div class="tab-content" id="reportTabContent">
+
+                <!-- ══ SALES REPORT ══ -->
+                <div class="tab-pane fade show active" id="salesReport" role="tabpanel">
+
+                    <!-- Filters -->
+                    <div class="toolbar mb-3">
+                        <h5 class="m-0 text-dark">
+                            <i class="fas fa-filter mr-1"></i>Filter Sales Report
+                        </h5>
+                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <select class="form-control" style="width:140px;" id="salesPeriod">
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month" selected>This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="date" class="form-control" style="width:145px;" id="srFrom">
+                            <span class="text-muted">to</span>
+                            <input type="date" class="form-control" style="width:145px;" id="srTo">
+                            <select class="form-control" style="width:150px;">
+                                <option>All Customers</option>
+                                <option>Ahmed Raza</option>
+                                <option>Sara Khan</option>
+                                <option>Bilal Sheikh</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm px-3">
+                                <i class="fas fa-search mr-1"></i>Generate
+                            </button>
+                            <button class="btn btn-success btn-sm px-3" onclick="exportReport('sales','pdf')">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button class="btn btn-secondary btn-sm px-3" onclick="exportReport('sales','csv')">
+                                <i class="fas fa-file-csv mr-1"></i>CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="row mb-3">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-success py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Revenue</p>
+                                <h4 class="mb-0">Rs. 86,500</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-primary py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Invoices</p>
+                                <h4 class="mb-0">101</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-info py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Gross Profit</p>
+                                <h4 class="mb-0">Rs. 44,500</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-warning py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Avg Sale Value</p>
+                                <h4 class="mb-0">Rs. 856</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-header bg-white border-0">
+                            <h5 class="mb-0 font-weight-bold">Sales Trend (Daily)</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="salesReportChart" height="100"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="salesReportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Invoice #</th>
+                                    <th>Customer</th>
+                                    <th class="text-right">Revenue</th>
+                                    <th class="text-right">Cost</th>
+                                    <th class="text-right">Profit</th>
+                                    <th class="text-right">Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>08 Mar 2025</td>
+                                    <td><span class="badge badge-secondary">INV-0101</span></td>
+                                    <td>Ahmed Raza</td>
+                                    <td class="text-right">Rs. 320</td>
+                                    <td class="text-right text-muted">Rs. 155</td>
+                                    <td class="text-right text-success font-weight-bold">Rs. 165</td>
+                                    <td class="text-right">51.6%</td>
+                                </tr>
+                                <tr>
+                                    <td>07 Mar 2025</td>
+                                    <td><span class="badge badge-secondary">INV-0100</span></td>
+                                    <td>Fatima Malik</td>
+                                    <td class="text-right">Rs. 780</td>
+                                    <td class="text-right text-muted">Rs. 390</td>
+                                    <td class="text-right text-success font-weight-bold">Rs. 390</td>
+                                    <td class="text-right">50.0%</td>
+                                </tr>
+                                <tr>
+                                    <td>07 Mar 2025</td>
+                                    <td><span class="badge badge-secondary">INV-0099</span></td>
+                                    <td>Bilal Sheikh</td>
+                                    <td class="text-right">Rs. 3,200</td>
+                                    <td class="text-right text-muted">Rs. 1,560</td>
+                                    <td class="text-right text-success font-weight-bold">Rs. 1,640</td>
+                                    <td class="text-right">51.3%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══ INVENTORY REPORT ══ -->
+                <div class="tab-pane fade" id="inventoryReport" role="tabpanel">
+                    <div class="toolbar mb-3">
+                        <h5 class="m-0 text-dark">
+                            <i class="fas fa-filter mr-1"></i>Inventory Report
+                        </h5>
+                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <select class="form-control" style="width:150px;">
+                                <option>All Categories</option>
+                                <option>Electronics</option>
+                                <option>Accessories</option>
+                                <option>Furniture</option>
+                            </select>
+                            <select class="form-control" style="width:160px;">
+                                <option>All Items</option>
+                                <option>Low Stock Only</option>
+                                <option>Out of Stock</option>
+                            </select>
+                            <button class="btn btn-success btn-sm px-3" onclick="exportReport('inventory','pdf')">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button class="btn btn-secondary btn-sm px-3" onclick="exportReport('inventory','csv')">
+                                <i class="fas fa-file-csv mr-1"></i>CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-primary py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Products</p>
+                                <h4 class="mb-0">1,240</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-warning py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Stock Value</p>
+                                <h4 class="mb-0">Rs. 120k</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-danger py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Low Stock Items</p>
+                                <h4 class="mb-0">3</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-info py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Categories</p>
+                                <h4 class="mb-0">8</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="inventoryReportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Category</th>
+                                    <th class="text-center">Stock</th>
+                                    <th class="text-right">Cost Price</th>
+                                    <th class="text-right">Sale Price</th>
+                                    <th class="text-right">Stock Value</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="font-weight-bold">Wireless Mouse</td>
+                                    <td><small class="text-muted">SKU-001</small></td>
+                                    <td><span class="badge badge-category">Electronics</span></td>
+                                    <td class="text-center text-danger font-weight-bold">2</td>
+                                    <td class="text-right">Rs. 8.00</td>
+                                    <td class="text-right">Rs. 15.00</td>
+                                    <td class="text-right font-weight-bold">Rs. 16.00</td>
+                                    <td><span class="badge badge-danger badge-pill">Low Stock</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">USB-C Cable</td>
+                                    <td><small class="text-muted">SKU-002</small></td>
+                                    <td><span class="badge badge-category">Accessories</span></td>
+                                    <td class="text-center">50</td>
+                                    <td class="text-right">Rs. 2.00</td>
+                                    <td class="text-right">Rs. 5.00</td>
+                                    <td class="text-right font-weight-bold">Rs. 100.00</td>
+                                    <td><span class="badge badge-success badge-pill">In Stock</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">Monitor Stand</td>
+                                    <td><small class="text-muted">SKU-003</small></td>
+                                    <td><span class="badge badge-category">Furniture</span></td>
+                                    <td class="text-center">15</td>
+                                    <td class="text-right">Rs. 25.00</td>
+                                    <td class="text-right">Rs. 45.00</td>
+                                    <td class="text-right font-weight-bold">Rs. 375.00</td>
+                                    <td><span class="badge badge-success badge-pill">In Stock</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">Mechanical Keyboard</td>
+                                    <td><small class="text-muted">SKU-004</small></td>
+                                    <td><span class="badge badge-category">Electronics</span></td>
+                                    <td class="text-center">12</td>
+                                    <td class="text-right">Rs. 40.00</td>
+                                    <td class="text-right">Rs. 80.00</td>
+                                    <td class="text-right font-weight-bold">Rs. 480.00</td>
+                                    <td><span class="badge badge-success badge-pill">In Stock</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══ PURCHASE REPORT ══ -->
+                <div class="tab-pane fade" id="purchaseReport" role="tabpanel">
+                    <div class="toolbar mb-3">
+                        <h5 class="m-0 text-dark">
+                            <i class="fas fa-filter mr-1"></i>Purchase Report
+                        </h5>
+                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <select class="form-control" style="width:150px;">
+                                <option>All Suppliers</option>
+                                <option>Al-Fatah Traders</option>
+                                <option>Tech Zone Pvt Ltd</option>
+                            </select>
+                            <select class="form-control" style="width:140px;">
+                                <option value="month" selected>This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="date" class="form-control" style="width:145px;">
+                            <span class="text-muted">to</span>
+                            <input type="date" class="form-control" style="width:145px;">
+                            <button class="btn btn-primary btn-sm px-3">
+                                <i class="fas fa-search mr-1"></i>Generate
+                            </button>
+                            <button class="btn btn-success btn-sm px-3" onclick="exportReport('purchase','pdf')">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button class="btn btn-secondary btn-sm px-3" onclick="exportReport('purchase','csv')">
+                                <i class="fas fa-file-csv mr-1"></i>CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-warning py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Purchased</p>
+                                <h4 class="mb-0">Rs. 105,500</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-success py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Paid</p>
+                                <h4 class="mb-0">Rs. 72,900</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="card-box bg-gradient-danger py-3">
+                                <p class="mb-1" style="font-size:0.85rem;">Total Payable</p>
+                                <h4 class="mb-0">Rs. 32,600</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="purchaseReportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Ref #</th>
+                                    <th>Supplier</th>
+                                    <th>Items</th>
+                                    <th class="text-right">Total</th>
+                                    <th class="text-right">Paid</th>
+                                    <th class="text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>05 Mar 2025</td>
+                                    <td><span class="badge badge-secondary">PUR-0021</span></td>
+                                    <td>Al-Fatah Traders</td>
+                                    <td>Wireless Mouse ×50, USB-C ×100</td>
+                                    <td class="text-right font-weight-bold">Rs. 600</td>
+                                    <td class="text-right text-success">Rs. 600</td>
+                                    <td class="text-right text-muted"> Rs. 0</td>
+                                </tr>
+                                <tr>
+                                    <td>02 Mar 2025</td>
+                                    <td><span class="badge badge-secondary">PUR-0020</span></td>
+                                    <td>Tech Zone Pvt Ltd</td>
+                                    <td>Mechanical Keyboard ×30</td>
+                                    <td class="text-right font-weight-bold">Rs. 1,200</td>
+                                    <td class="text-right text-success">Rs. 600</td>
+                                    <td class="text-right text-danger font-weight-bold">Rs. 600</td>
+                                </tr>
+                                <tr>
+                                    <td>28 Feb 2025</td>
+                                    <td><span class="badge badge-secondary">PUR-0019</span></td>
+                                    <td>Prime Electronics</td>
+                                    <td>Monitor Stand ×20</td>
+                                    <td class="text-right font-weight-bold">Rs. 500</td>
+                                    <td class="text-right text-success"> Rs. 0</td>
+                                    <td class="text-right text-danger font-weight-bold">Rs. 500</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ══ CUSTOMER REPORT ══ -->
+                <div class="tab-pane fade" id="customerReport" role="tabpanel">
+                    <div class="toolbar mb-3">
+                        <h5 class="m-0 text-dark">
+                            <i class="fas fa-filter mr-1"></i>Customer Report
+                        </h5>
+                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <select class="form-control" style="width:140px;">
+                                <option>All Types</option>
+                                <option>Retail</option>
+                                <option>Wholesale</option>
+                                <option>Walk-in</option>
+                            </select>
+                            <select class="form-control" style="width:140px;">
+                                <option value="month" selected>This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                            <button class="btn btn-success btn-sm px-3" onclick="exportReport('customer','pdf')">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button class="btn btn-secondary btn-sm px-3" onclick="exportReport('customer','csv')">
+                                <i class="fas fa-file-csv mr-1"></i>CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="customerReportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Type</th>
+                                    <th class="text-center">Invoices</th>
+                                    <th class="text-right">Total Purchased</th>
+                                    <th class="text-right">Total Paid</th>
+                                    <th class="text-right">Outstanding</th>
+                                    <th class="text-right">Profit Contribution</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="font-weight-bold">Bilal Sheikh</td>
+                                    <td><span class="badge badge-success badge-pill">Wholesale</span></td>
+                                    <td class="text-center">18</td>
+                                    <td class="text-right">Rs. 32,000</td>
+                                    <td class="text-right text-success">Rs. 32,500</td>
+                                    <td class="text-right text-muted"> Rs. 0</td>
+                                    <td class="text-right font-weight-bold text-success">Rs. 16,400</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">Sara Khan</td>
+                                    <td><span class="badge badge-success badge-pill">Wholesale</span></td>
+                                    <td class="text-center">12</td>
+                                    <td class="text-right">Rs. 18,500</td>
+                                    <td class="text-right text-success">Rs. 18,500</td>
+                                    <td class="text-right text-muted"> Rs. 0</td>
+                                    <td class="text-right font-weight-bold text-success">Rs. 9,500</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">Fatima Malik</td>
+                                    <td><span class="badge badge-info badge-pill">Retail</span></td>
+                                    <td class="text-center">9</td>
+                                    <td class="text-right">Rs. 6,100</td>
+                                    <td class="text-right text-success">Rs. 4,900</td>
+                                    <td class="text-right text-danger font-weight-bold">Rs. 1,200</td>
+                                    <td class="text-right font-weight-bold text-success">Rs. 3,050</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-weight-bold">Ahmed Raza</td>
+                                    <td><span class="badge badge-info badge-pill">Retail</span></td>
+                                    <td class="text-center">7</td>
+                                    <td class="text-right">Rs. 4,200</td>
+                                    <td class="text-right text-success">Rs. 3,550</td>
+                                    <td class="text-right text-danger font-weight-bold">Rs. 650</td>
+                                    <td class="text-right font-weight-bold text-success">Rs. 2,100</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div><!-- /tab-content -->
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // Sales trend chart
+    var srCtx = document.getElementById('salesReportChart');
+    if (srCtx) {
+        new Chart(srCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['1 Mar','2 Mar','3 Mar','4 Mar','5 Mar','6 Mar','7 Mar','8 Mar'],
+                datasets: [{
+                    label: 'Revenue (Rs.)',
+                    data: [2400, 1800, 3200, 2900, 4100, 3600, 4980, 3520],
+                    backgroundColor: 'rgba(46, 216, 182, 0.15)',
+                    borderColor: 'rgba(46, 216, 182, 1)',
+                    borderWidth: 2, fill: true, tension: 0.4
+                },{
+                    label: 'Profit (Rs.)',
+                    data: [1100, 850, 1600, 1450, 2050, 1800, 2490, 1760],
+                    backgroundColor: 'rgba(64, 153, 255, 0.1)',
+                    borderColor: 'rgba(64, 153, 255, 1)',
+                    borderWidth: 2, fill: false, tension: 0.4,
+                    borderDash: [5, 5]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    // Export
+    function exportReport(type, format) {
+        var tableId = {
+            sales: 'salesReportTable',
+            inventory: 'inventoryReportTable',
+            purchase: 'purchaseReportTable',
+            customer: 'customerReportTable'
+        }[type];
+
+        if (format === 'csv') {
+            var headers = Array.from(document.querySelectorAll('#' + tableId + ' thead th'))
+                              .map(function(th){ return '"' + th.innerText.trim() + '"'; });
+            var rows = [headers.join(',')];
+            document.querySelectorAll('#' + tableId + ' tbody tr').forEach(function(row) {
+                rows.push(Array.from(row.querySelectorAll('td')).map(function(td){
+                    return '"' + td.innerText.replace(/\n/g,' ').trim() + '"';
+                }).join(','));
+            });
+            var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = type + '_report.csv'; a.click();
+        }
+
+        if (format === 'pdf') {
+            var { jsPDF } = window.jspdf;
+            var doc = new jsPDF('l', 'mm', 'a4');
+            var headers = [Array.from(document.querySelectorAll('#' + tableId + ' thead th'))
+                              .map(function(th){ return th.innerText.trim(); })];
+            var body = Array.from(document.querySelectorAll('#' + tableId + ' tbody tr')).map(function(row){
+                return Array.from(row.querySelectorAll('td')).map(function(td){
+                    return td.innerText.replace(/\n/g,' ').trim();
+                });
+            });
+            doc.text(type.charAt(0).toUpperCase() + type.slice(1) + ' Report', 14, 15);
+            doc.autoTable({ head: headers, body: body, startY: 20, styles: { fontSize: 8 } });
+            doc.save(type + '_report.pdf');
+        }
+    }
+</script>
+
+{% endblock %}

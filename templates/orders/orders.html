@@ -1,0 +1,202 @@
+{% extends "partials/base.html" %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3"><div class="col-12">
+        <h2 class="text-dark">Orders</h2>
+        <p class="text-muted">Manage customer orders. Accept → Convert to Invoice → Record Payment.</p>
+    </div></div>
+
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-hourglass-half"></i></div><p>Pending</p><h3>{{ pending_orders }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-info"><div class="icon"><i class="fas fa-thumbs-up"></i></div><p>Confirmed</p><h3>{{ confirmed_orders }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-check-double"></i></div><p>Converted</p><h3>{{ converted_orders }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-times-circle"></i></div><p>Cancelled</p><h3>{{ cancelled_orders }}</h3></div></div>
+    </div>
+
+    <div class="alert alert-info mb-4 py-2" style="font-size:.88rem;">
+        <i class="fas fa-info-circle mr-2"></i>
+        <strong>Order Workflow:</strong>
+        Customer places order &rarr; <strong>Pending</strong>
+        &rarr; Seller <strong>Accepts</strong> (Confirmed)
+        &rarr; Seller <strong>Converts to Invoice</strong> (stock deducted)
+        &rarr; Record payment from Sales page.
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9 mb-4">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                    <h5 class="text-dark mb-2 mb-md-0"><i class="fas fa-list mr-2"></i>Order List</h5>
+                    <form method="GET" class="d-flex flex-wrap" style="gap:6px;">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search customer..." value="{{ request.GET.q }}" style="width:160px;">
+                        <select name="status" class="form-control form-control-sm" style="width:130px;">
+                            <option value="">All Status</option>
+                            <option value="pending"   {% if request.GET.status == 'pending'   %}selected{% endif %}>Pending</option>
+                            <option value="confirmed" {% if request.GET.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                            <option value="converted" {% if request.GET.status == 'converted' %}selected{% endif %}>Converted</option>
+                            <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm">Go</button>
+                    </form>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr><th>Order #</th><th>Customer</th><th>Date</th><th>Items</th><th>Est. Total</th><th>Status</th><th class="text-center" style="min-width:170px;">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td><span class="badge badge-secondary">{{ order.order_number }}</span></td>
+                                <td>
+                                    <span class="font-weight-bold">{{ order.customer_name }}</span>
+                                    {% if order.notes %}<br><small class="text-muted">{{ order.notes|truncatechars:35 }}</small>{% endif %}
+                                </td>
+                                <td>{{ order.created_at|date:"d M Y" }}</td>
+                                <td>
+                                    {% for item in order.items.all %}
+                                    <div style="font-size:.82rem;">{{ item.product.name }} <span class="text-muted">x{{ item.quantity }}</span></div>
+                                    {% endfor %}
+                                </td>
+                                <td class="font-weight-bold"> Rs. {{ order.total_amount|floatformat:2 }}</td>
+                                <td>
+                                    {% if order.status == 'pending' %}<span class="badge badge-warning badge-pill px-3">Pending</span>
+                                    {% elif order.status == 'confirmed' %}<span class="badge badge-info badge-pill px-3">Confirmed</span>
+                                    {% elif order.status == 'converted' %}<span class="badge badge-success badge-pill px-3">Converted</span>
+                                    {% else %}<span class="badge badge-danger badge-pill px-3">Cancelled</span>{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if order.status == 'pending' %}
+                                        <form method="POST" action="{% url 'order-confirm' order.pk %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-info mr-1" title="Accept">
+                                                <i class="fas fa-thumbs-up"></i> Accept
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{% url 'order-cancel' order.pk %}" style="display:inline;"
+                                              onsubmit="return confirm('Reject this order?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject"><i class="fas fa-times"></i></button>
+                                        </form>
+                                    {% elif order.status == 'confirmed' %}
+                                        <form method="POST" action="{% url 'order-convert' order.pk %}" style="display:inline;"
+                                              onsubmit="return confirm('Convert to invoice? Stock will be deducted.')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success mr-1" title="Convert to Invoice">
+                                                <i class="fas fa-file-invoice mr-1"></i>Invoice
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{% url 'order-cancel' order.pk %}" style="display:inline;"
+                                              onsubmit="return confirm('Cancel this order?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel"><i class="fas fa-times"></i></button>
+                                        </form>
+                                    {% elif order.status == 'converted' %}
+                                        <span class="text-success" style="font-size:.82rem;"><i class="fas fa-check-circle mr-1"></i>Done</span>
+                                    {% else %}
+                                        <span class="text-muted" style="font-size:.82rem;">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">No orders yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-bolt mr-2 text-warning"></i>Quick Actions</h5></div>
+                <div class="card-body pt-0">
+                    <button class="btn btn-action btn-add-sale" data-toggle="modal" data-target="#newOrderModal">
+                        <i class="fas fa-plus-circle mr-2"></i>Create Manual Order
+                    </button> 
+                </div>
+            </div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-info-circle mr-2 text-info"></i>Status Guide</h5></div>
+                <ul class="list-group list-group-flush" style="font-size:.85rem;">
+                    <li class="list-group-item py-2"><span class="badge badge-warning mr-2">Pending</span>Awaiting review</li>
+                    <li class="list-group-item py-2"><span class="badge badge-info mr-2">Confirmed</span>Accepted, not invoiced</li>
+                    <li class="list-group-item py-2"><span class="badge badge-success mr-2">Converted</span>Invoice created</li>
+                    <li class="list-group-item py-2"><span class="badge badge-danger mr-2">Cancelled</span>Rejected</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Create Manual Order -->
+<div class="modal fade" id="newOrderModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Create Order</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'order-add' %}">
+                    {% csrf_token %}
+                    <div class="form-row mb-2">
+                        <div class="form-group col-md-6">
+                            <label>Customer</label>
+                            <select name="customer" class="form-control">
+                                <option value="">— Walk-in —</option>
+                                {% for c in customers %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Notes</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Optional...">
+                        </div>
+                    </div>
+                    <div class="table-container mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Items</h6>
+                            <button type="button" class="btn btn-sm btn-success" onclick="addOrderRow()"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm"><thead class="thead-light">
+                                <tr><th style="width:60%">Product</th><th style="width:30%">Qty</th><th style="width:10%"></th></tr>
+                            </thead>
+                            <tbody id="orderItemsBody">
+                                <tr>
+                                    <td><select name="product[]" class="form-control form-control-sm">
+                                        <option value="">Select...</option>
+                                        {% for p in products %}<option value="{{ p.pk }}">{{ p.name }} — Rs. {{ p.sale_price }} ({{ p.current_stock }} left)</option>{% endfor %}
+                                    </select></td>
+                                    <td><input type="number" name="quantity[]" class="form-control form-control-sm" min="1" value="1"></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeOrderRow(this)"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            </tbody></table>
+                        </div>
+                    </div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Create Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function addOrderRow() {
+    var tbody = document.getElementById("orderItemsBody");
+    var row   = tbody.rows[0].cloneNode(true);
+    row.querySelectorAll("input").forEach(function(i){ i.value = "1"; });
+    row.querySelector("select").selectedIndex = 0;
+    tbody.appendChild(row);
+}
+function removeOrderRow(btn) {
+    var tbody = document.getElementById("orderItemsBody");
+    if (tbody.rows.length > 1) btn.closest("tr").remove();
+}
+</script>
+{% endblock %}

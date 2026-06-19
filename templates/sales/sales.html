@@ -1,0 +1,535 @@
+{% extends "partials/base.html" %}
+{% block title %}Sales{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="text-dark">Sales</h2>
+            <p class="text-muted">Generate invoices, record payments and track all transactions.</p>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-success">
+                <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                <p>Today's Revenue</p>
+                <h3> Rs. {{ today_revenue|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-primary">
+                <div class="icon"><i class="fas fa-receipt"></i></div>
+                <p>Today's Invoices</p>
+                <h3>{{ today_invoices }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-info">
+                <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                <p>Monthly Revenue</p>
+                <h3> Rs. </h3> <h4>{{ monthly_revenue|floatformat:0 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-warning">
+                <div class="icon"><i class="fas fa-clock"></i></div>
+                <p>Unpaid Invoices</p>
+                <h3>{{ unpaid_count }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sales Table -->
+        <div class="col-lg-9 mb-4">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                    <h5 class="text-dark mb-2 mb-md-0"><i class="fas fa-list mr-2"></i>Invoice List</h5>
+                    <div class="d-flex flex-wrap" style="gap:8px;">
+                        <form method="GET" class="d-flex" style="gap:6px;">
+                            <input type="text" name="q" class="form-control form-control-sm"
+                                   placeholder="Search customer..." value="{{ request.GET.q }}" style="width:160px;">
+                            <select name="status" class="form-control form-control-sm" style="width:110px;">
+                                <option value="">All Status</option>
+                                <option value="paid"    {% if request.GET.status == 'paid'    %}selected{% endif %}>Paid</option>
+                                <option value="partial" {% if request.GET.status == 'partial' %}selected{% endif %}>Partial</option>
+                                <option value="unpaid"  {% if request.GET.status == 'unpaid'  %}selected{% endif %}>Unpaid</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm">Go</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="salesTable">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Paid</th>
+                                <th class="text-right">Balance</th>
+                                <th>Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in sales %}
+                            <tr>
+                                <td><span class="badge badge-secondary">{{ sale.invoice_number }}</span></td>
+                                <td class="font-weight-bold">{{ sale.customer_name }}</td>
+                                <td>{{ sale.sale_date }}</td>
+                                <td class="text-right font-weight-bold"> Rs. {{ sale.total_amount|floatformat:2 }}</td>
+                                <td class="text-right text-success"> Rs. {{ sale.paid_amount|floatformat:2 }}</td>
+                                <td class="text-right">
+                                    {% if sale.balance > 0 %}
+                                        <span class="text-danger font-weight-bold"> Rs. {{ sale.balance|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-muted"> Rs. 0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sale.status == 'paid' %}
+                                        <span class="badge badge-success badge-pill px-3">Paid</span>
+                                    {% elif sale.status == 'partial' %}
+                                        <span class="badge badge-warning badge-pill px-3">Partial</span>
+                                    {% else %}
+                                        <span class="badge badge-danger badge-pill px-3">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <!-- View Invoice -->
+                                    <a href="{% url 'sale-invoice' sale.pk %}"
+                                       class="btn btn-sm btn-outline-info mr-1" title="View Invoice"
+                                       target="_blank">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <!-- Record Payment (only if balance due) -->
+                                    {% if sale.balance > 0 %}
+                                    <button class="btn btn-sm btn-outline-success mr-1"
+                                            title="Record Payment"
+                                            onclick="openSalePayment({{ sale.pk }}, '{{ sale.invoice_number }}', '{{ sale.balance|floatformat:2 }}')"
+                                            data-toggle="modal" data-target="#salePayModal">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </button>
+                                    {% endif %}
+                                    <!-- Delete -->
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            title="Delete Invoice"
+                                            onclick="openSaleDelete({{ sale.pk }}, '{{ sale.invoice_number }}')"
+                                            data-toggle="modal" data-target="#deleteSaleModal">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    No invoices yet. Create your first sale!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 font-weight-bold">
+                        <i class="fas fa-bolt mr-2 text-warning"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <button class="btn btn-action btn-add-sale"
+                            data-toggle="modal" data-target="#newSaleModal">
+                        <i class="fas fa-plus-circle mr-2"></i>New Invoice
+                    </button>
+                    <button class="btn btn-action btn-update-stock"
+                            data-toggle="modal" data-target="#salePayModal">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Record Payment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Today's Summary -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 font-weight-bold">
+                        <i class="fas fa-chart-pie mr-1 text-info"></i>Today
+                    </h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Revenue</span>
+                        <strong class="text-success"> Rs. {{ today_revenue|floatformat:2 }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Profit</span>
+                        <strong class="text-info"> Rs. {{ today_profit|floatformat:2 }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Credit Sales</span>
+                        <strong class="text-warning"> Rs. {{ today_credit_sales|floatformat:2 }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     MODAL 1 — NEW SALE / INVOICE
+═══════════════════════════════════════ -->
+<div class="modal fade" id="newSaleModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle mr-2"></i>Generate New Invoice
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'sale-add' %}">
+                    {% csrf_token %}
+                    <div class="form-row mb-2">
+                        <div class="form-group col-md-4">
+                            <label>Customer</label>
+                            <select name="customer" class="form-control">
+                                <option value="">-- Walk-in Customer --</option>
+                                {% for c in customers %}
+                                    <option value="{{ c.pk }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Payment Method</label>
+                            <select name="payment_method" class="form-control">
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Credit">On Credit</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Tax (%)</label>
+                            <input type="number" name="tax_percent" id="taxInput"
+                                   class="form-control" value="0" min="0" max="100"
+                                   step="0.1" oninput="calcSaleTotals()">
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="table-container mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 font-weight-bold">Items</h6>
+                            <button type="button" class="btn btn-sm btn-success" onclick="addSaleRow()">
+                                <i class="fas fa-plus"></i> Add Item
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width:38%">Product</th>
+                                        <th style="width:10%">Stock</th>
+                                        <th style="width:12%">Qty</th>
+                                        <th style="width:15%">Price (Rs.)</th>
+                                        <th style="width:10%">Disc %</th>
+                                        <th style="width:12%">Subtotal</th>
+                                        <th style="width:3%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="saleItemsBody">
+                                    <tr>
+                                        <td>
+                                            <select name="product[]" class="form-control form-control-sm"
+                                                    onchange="fillPrice(this)">
+                                                <option value="">Select product...</option>
+                                                {% for p in products %}
+                                                <option value="{{ p.pk }}"
+                                                        data-price="{{ p.sale_price }}"
+                                                        data-stock="{{ p.current_stock }}">
+                                                    {{ p.name }} ({{ p.current_stock }} left)
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm stock-disp"
+                                                   value="—" readonly style="background:#f8f9fa;">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="quantity[]"
+                                                   class="form-control form-control-sm sale-qty"
+                                                   min="1" oninput="calcSaleRow(this)">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="sale_price[]"
+                                                   class="form-control form-control-sm sale-price"
+                                                   step="0.01" oninput="calcSaleRow(this)">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="discount[]"
+                                                   class="form-control form-control-sm sale-disc"
+                                                   value="0" min="0" max="100" oninput="calcSaleRow(this)">
+                                        </td>
+                                        <td>
+                                            <span class="sale-subtotal font-weight-bold text-success"> Rs. 0.00</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="removeSaleRow(this)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Totals -->
+                        <div class="row justify-content-end mt-2">
+                            <div class="col-md-4">
+                                <table class="table table-sm mb-0">
+                                    <tr>
+                                        <td class="text-muted">Subtotal</td>
+                                        <td class="text-right font-weight-bold" id="saleSubtotal"> Rs. 0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Discount</td>
+                                        <td class="text-right text-danger" id="saleDiscount">-Rs. 0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Tax</td>
+                                        <td class="text-right text-warning" id="saleTax"> Rs. 0.00</td>
+                                    </tr>
+                                    <tr class="font-weight-bold">
+                                        <td>Grand Total</td>
+                                        <td class="text-right text-success" id="saleGrandTotal"> Rs. 0.00</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment -->
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Amount Received (Rs.)</label>
+                            <input type="number" name="paid_amount" id="salePaid"
+                                   class="form-control" step="0.01" min="0"
+                                   oninput="calcSaleBalance()">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Balance / Change (Rs.)</label>
+                            <input type="text" id="saleBalanceDisplay" class="form-control"
+                                   value="0.00" readonly
+                                   style="background:#fff3cd;font-weight:bold;">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Notes</label>
+                            <input type="text" name="notes" class="form-control"
+                                   placeholder="Optional...">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save mr-1"></i>Save Invoice
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     MODAL 2 — RECORD PAYMENT
+═══════════════════════════════════════ -->
+<div class="modal fade" id="salePayModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-money-bill-wave mr-2"></i>Record Payment
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'sale-payment' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Invoice <span class="text-danger">*</span></label>
+                        <select name="invoice" id="payInvoiceSel" class="form-control" required>
+                            <option value="">Select invoice...</option>
+                            {% for sale in sales %}
+                                {% if sale.balance > 0 %}
+                                <option value="{{ sale.pk }}">
+                                    {{ sale.invoice_number }} — {{ sale.customer_name }}
+                                    (Rs. {{ sale.balance|floatformat:2 }} due)
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <small id="payBalanceHint" class="text-muted"></small>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount (Rs.) <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" id="payAmountInput"
+                               class="form-control" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" name="payment_date" class="form-control">
+                    </div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning text-white">
+                            <i class="fas fa-save mr-1"></i>Save Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     MODAL 3 — DELETE INVOICE
+═══════════════════════════════════════ -->
+<div class="modal fade" id="deleteSaleModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Delete Invoice
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center py-3">
+                <i class="fas fa-receipt fa-3x text-danger mb-3"></i>
+                <p class="mb-1">Delete <strong id="delSaleNo"></strong>?</p>
+                <small class="text-muted">Stock will be restored. This cannot be undone.</small>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <!-- ACTION SET DYNAMICALLY BY JS — no hardcoded pk -->
+                <form method="POST" id="deleteSaleForm" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt mr-1"></i>Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+/* ── Delete modal: set correct URL with pk ── */
+function openSaleDelete(pk, invoiceNo) {
+    document.getElementById('delSaleNo').textContent    = invoiceNo;
+    document.getElementById('deleteSaleForm').action   = '/sales/delete/' + pk + '/';
+}
+
+/* ── Payment modal: pre-select invoice + show balance ── */
+function openSalePayment(pk, invoiceNo, balance) {
+    var sel = document.getElementById('payInvoiceSel');
+    sel.value = pk;
+    document.getElementById('payAmountInput').value    = balance;
+    document.getElementById('payBalanceHint').textContent = invoiceNo + ' — Rs. ' + balance + ' due';
+}
+
+/* ── New Sale: product row helpers ── */
+function addSaleRow() {
+    var tbody = document.getElementById('saleItemsBody');
+    var row   = tbody.rows[0].cloneNode(true);
+    row.querySelectorAll('input').forEach(function(i) {
+        i.value = i.classList.contains('sale-disc') ? '0' : '';
+    });
+    row.querySelector('select').selectedIndex = 0;
+    row.querySelector('.sale-subtotal').textContent = 'Rs. 0.00';
+    row.querySelector('.stock-disp').value = '—';
+    tbody.appendChild(row);
+}
+
+function removeSaleRow(btn) {
+    var tbody = document.getElementById('saleItemsBody');
+    if (tbody.rows.length > 1) {
+        btn.closest('tr').remove();
+        calcSaleTotals();
+    }
+}
+
+function fillPrice(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    var row = sel.closest('tr');
+    row.querySelector('.sale-price').value  = opt.dataset.price  || '';
+    row.querySelector('.stock-disp').value  = opt.dataset.stock  || '—';
+    calcSaleRow(row.querySelector('.sale-qty'));
+}
+
+function calcSaleRow(input) {
+    var row   = input.closest('tr');
+    var qty   = parseFloat(row.querySelector('.sale-qty').value)   || 0;
+    var price = parseFloat(row.querySelector('.sale-price').value) || 0;
+    var disc  = parseFloat(row.querySelector('.sale-disc').value)  || 0;
+    row.querySelector('.sale-subtotal').textContent =
+        'Rs. ' + (qty * price * (1 - disc / 100)).toFixed(2);
+    calcSaleTotals();
+}
+
+function calcSaleTotals() {
+    var subtotal = 0, discTotal = 0;
+    document.querySelectorAll('#saleItemsBody tr').forEach(function(row) {
+        var qty   = parseFloat(row.querySelector('.sale-qty')
+                        ? row.querySelector('.sale-qty').value   : 0) || 0;
+        var price = parseFloat(row.querySelector('.sale-price')
+                        ? row.querySelector('.sale-price').value : 0) || 0;
+        var disc  = parseFloat(row.querySelector('.sale-disc')
+                        ? row.querySelector('.sale-disc').value  : 0) || 0;
+        subtotal  += qty * price;
+        discTotal += qty * price * disc / 100;
+    });
+    var tax    = parseFloat(document.getElementById('taxInput').value) || 0;
+    var net    = subtotal - discTotal;
+    var taxAmt = net * tax / 100;
+    var grand  = net + taxAmt;
+
+    document.getElementById('saleSubtotal').textContent  = 'Rs. ' + subtotal.toFixed(2);
+    document.getElementById('saleDiscount').textContent  = '-Rs. ' + discTotal.toFixed(2);
+    document.getElementById('saleTax').textContent       = 'Rs. ' + taxAmt.toFixed(2);
+    document.getElementById('saleGrandTotal').textContent = 'Rs. ' + grand.toFixed(2);
+    calcSaleBalance();
+}
+
+function calcSaleBalance() {
+    var grand = parseFloat(
+        document.getElementById('saleGrandTotal').textContent.replace('Rs. ', '')) || 0;
+    var paid  = parseFloat(document.getElementById('salePaid').value) || 0;
+    document.getElementById('saleBalanceDisplay').value = (paid - grand).toFixed(2);
+}
+</script>
+{% endblock %}

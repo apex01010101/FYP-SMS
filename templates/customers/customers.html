@@ -1,0 +1,273 @@
+{% extends "partials/base.html" %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3"><div class="col-12">
+        <h2 class="text-dark">Customers</h2>
+        <p class="text-muted">Manage customer accounts, balances and login access.</p>
+    </div></div>
+
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-primary"><div class="icon"><i class="fas fa-users"></i></div><p>Total Customers</p><h3>{{ total_customers }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-danger"><div class="icon"><i class="fas fa-hand-holding-usd"></i></div><p>Total Receivable</p><h3> Rs. </h3> <h4>{{ total_receivable|floatformat:0 }}</h4> </div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-success"><div class="icon"><i class="fas fa-user-check"></i></div><p>Active</p><h3>{{ active_count }}</h3></div></div>
+        <div class="col-md-3 col-sm-6 mb-3"><div class="card-box bg-gradient-warning"><div class="icon"><i class="fas fa-user-plus"></i></div><p>New This Month</p><h3>{{ new_this_month }}</h3></div></div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                    <h5 class="text-dark mb-2 mb-md-0"><i class="fas fa-list mr-2"></i>Customer List</h5>
+                    <form method="GET" class="d-flex flex-wrap" style="gap:6px;">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.GET.q }}" style="width:160px;">
+                        <select name="type" class="form-control form-control-sm" style="width:120px;">
+                            <option value="">All Types</option>
+                            <option value="Retail" {% if request.GET.type == 'Retail' %}selected{% endif %}>Retail</option>
+                            <option value="Wholesale" {% if request.GET.type == 'Wholesale' %}selected{% endif %}>Wholesale</option>
+                            <option value="Walk-in" {% if request.GET.type == 'Walk-in' %}selected{% endif %}>Walk-in</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm">Go</button>
+                    </form>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr><th>#</th><th>Customer</th><th>Phone</th><th>Type</th><th>Balance Due</th><th>Login</th><th>Status</th><th class="text-center">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for c in customers %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <span class="font-weight-bold">{{ c.name }}</span><br>
+                                    <small class="text-muted">{{ c.email|default:"—" }}</small>
+                                </td>
+                                <td>{{ c.phone|default:"—" }}</td>
+                                <td>
+                                    {% if c.customer_type == 'Wholesale' %}<span class="badge badge-success badge-pill px-3">{{ c.customer_type }}</span>
+                                    {% elif c.customer_type == 'Walk-in' %}<span class="badge badge-warning badge-pill px-3">{{ c.customer_type }}</span>
+                                    {% else %}<span class="badge badge-info badge-pill px-3">{{ c.customer_type }}</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if c.balance_due > 0 %}<span class="text-danger font-weight-bold"> Rs. {{ c.balance_due|floatformat:2 }}</span>
+                                    {% else %}<span class="text-muted"> Rs. 0</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if c.user %}<span class="badge badge-primary">{{ c.user.username }}</span>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if c.status == 'Active' %}<span class="badge badge-success badge-pill px-3">Active</span>
+                                    {% else %}<span class="badge badge-secondary badge-pill px-3">Inactive</span>{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'customer-ledger' c.pk %}" class="btn btn-sm btn-outline-info mr-1" title="Ledger"><i class="fas fa-book"></i></a>
+                                    <button class="btn btn-sm btn-outline-primary mr-1" title="Edit"
+                                            onclick="openEditCust({{ c.pk }},'{{ c.name|escapejs }}','{{ c.phone }}','{{ c.email }}','{{ c.customer_type }}','{{ c.address|escapejs }}','{{ c.credit_limit }}','{{ c.status }}','{{ c.notes|escapejs }}')"
+                                            data-toggle="modal" data-target="#editCustModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="POST" action="{% url 'customer-delete' c.pk %}" style="display:inline;"
+                                          onsubmit="return confirm('Delete {{ c.name }}? This also deletes their login.')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center text-muted py-4">No customers yet. Add one!</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0"><h5 class="mb-0 font-weight-bold"><i class="fas fa-bolt mr-2 text-warning"></i>Quick Actions</h5></div>
+                <div class="card-body pt-0">
+                    <button class="btn btn-action btn-add-sale" data-toggle="modal" data-target="#addCustModal">
+                        <i class="fas fa-user-plus mr-2"></i>Add Customer
+                    </button>
+                    <button class="btn btn-action btn-update-stock" data-toggle="modal" data-target="#paymentModal">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Record Payment
+                    </button>
+                </div>
+            </div>
+            {% if overdue_customers %}
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between">
+                    <h5 class="mb-0 font-weight-bold text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Overdue</h5>
+                    <span class="badge badge-danger">{{ overdue_customers|length }}</span>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for c in overdue_customers %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <span class="font-weight-bold d-block" style="font-size:.88rem;">{{ c.name }}</span>
+                        </div>
+                        <span class="badge badge-danger badge-pill px-3"> Rs. {{ c.balance_due|floatformat:0 }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Add Customer -->
+<div class="modal fade" id="addCustModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus mr-2"></i>Add Customer</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'customer-add' %}">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Full Name <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required></div>
+                        <div class="form-group col-md-6"><label>Phone</label><input type="text" name="phone" class="form-control"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Email</label><input type="email" name="email" class="form-control"></div>
+                        <div class="form-group col-md-6"><label>Customer Type</label>
+                            <select name="customer_type" class="form-control">
+                                <option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="Walk-in">Walk-in</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Address</label><input type="text" name="address" class="form-control"></div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Credit Limit (Rs.)</label><input type="number" name="credit_limit" class="form-control" value="0" step="0.01"></div>
+                        <div class="form-group col-md-6"><label>Opening Balance (Rs.)</label><input type="number" name="opening_balance" class="form-control" value="0" step="0.01"></div>
+                    </div>
+                    <div class="form-group">
+                        <div class="card border-0 bg-light p-3" style="border-radius:8px;">
+                            <div class="custom-control custom-checkbox mb-2">
+                                <input type="checkbox" class="custom-control-input"
+                                       id="createLoginChk" name="create_login"
+                                       onchange="toggleUsernameNote()">
+                                <label class="custom-control-label font-weight-bold" for="createLoginChk">
+                                    Create login account — customer can access the customer portal
+                                </label>
+                            </div>
+                            <div id="loginNote" style="display:none;">
+                                <div class="alert alert-info py-2 mb-1" style="font-size:.82rem;">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <strong>Username</strong> is auto-generated from email (or name if no email).<br>
+                                    <strong>Password:</strong> <code>customer123</code> (customer must change after first login)<br>
+                                    The <strong>exact username will be shown</strong> in the success message after saving.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i>Save Customer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Edit Customer -->
+<div class="modal fade" id="editCustModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-user-edit mr-2"></i>Edit Customer</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editCustForm" action="">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Full Name</label><input type="text" name="name" id="ecName" class="form-control"></div>
+                        <div class="form-group col-md-6"><label>Phone</label><input type="text" name="phone" id="ecPhone" class="form-control"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Email</label><input type="email" name="email" id="ecEmail" class="form-control"></div>
+                        <div class="form-group col-md-6"><label>Customer Type</label>
+                            <select name="customer_type" id="ecType" class="form-control">
+                                <option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="Walk-in">Walk-in</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Address</label><input type="text" name="address" id="ecAddress" class="form-control"></div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6"><label>Credit Limit (Rs.)</label><input type="number" name="credit_limit" id="ecCredit" class="form-control" step="0.01"></div>
+                        <div class="form-group col-md-6"><label>Status</label>
+                            <select name="status" id="ecStatus" class="form-control"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Notes</label><textarea name="notes" id="ecNotes" class="form-control" rows="2"></textarea></div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Record Payment -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title"><i class="fas fa-money-bill-wave mr-2"></i>Record Payment</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'customer-payment' %}">
+                    {% csrf_token %}
+                    <div class="form-group"><label>Customer <span class="text-danger">*</span></label>
+                        <select name="customer" class="form-control" required>
+                            <option value="">Select customer...</option>
+                            {% for c in customers %}<option value="{{ c.pk }}">{{ c.name }}{% if c.balance_due > 0 %} — Rs. {{ c.balance_due|floatformat:2 }} due{% endif %}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Amount (Rs.) <span class="text-danger">*</span></label><input type="number" name="amount" class="form-control" step="0.01" required></div>
+                    <div class="form-group"><label>Payment Method</label>
+                        <select name="payment_method" class="form-control"><option>Cash</option><option>Bank Transfer</option><option>Card</option><option>Cheque</option></select>
+                    </div>
+                    <div class="form-group"><label>Date</label><input type="date" name="payment_date" class="form-control"></div>
+                    <div class="modal-footer px-0 pb-0">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning text-white"><i class="fas fa-save mr-1"></i>Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleUsernameNote() {
+    var chk  = document.getElementById('createLoginChk');
+    var note = document.getElementById('loginNote');
+    if (note) note.style.display = chk.checked ? 'block' : 'none';
+}
+
+function openEditCust(pk, name, phone, email, type, address, credit, status, notes) {
+    document.getElementById('ecName').value    = name;
+    document.getElementById('ecPhone').value   = phone;
+    document.getElementById('ecEmail').value   = email;
+    document.getElementById('ecType').value    = type;
+    document.getElementById('ecAddress').value = address;
+    document.getElementById('ecCredit').value  = credit;
+    document.getElementById('ecStatus').value  = status;
+    document.getElementById('ecNotes').value   = notes;
+    document.getElementById('editCustForm').action = '/customers/edit/' + pk + '/';
+}
+</script>
+{% endblock %}

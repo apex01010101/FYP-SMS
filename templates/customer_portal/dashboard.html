@@ -1,0 +1,121 @@
+{% extends "customer_portal/base.html" %}
+{% block title %}My Dashboard{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="text-dark">Welcome, {{ customer.name }}!</h2>
+            <p class="text-muted">Here's your account overview.</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-primary">
+                <div class="icon"><i class="fas fa-clipboard-list"></i></div>
+                <p>My Orders</p>
+                <h3>{{ total_orders }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-warning">
+                <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+                <p>Pending Orders</p>
+                <h3>{{ pending_orders }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box bg-gradient-success">
+                <div class="icon"><i class="fas fa-receipt"></i></div>
+                <p>Total Purchases</p>
+                <h3> Rs. {{ total_purchases|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card-box {% if balance_due > 0 %}bg-gradient-danger{% else %}bg-gradient-success{% endif %}">
+                <div class="icon"><i class="fas fa-hand-holding-usd"></i></div>
+                <p>Balance Due</p>
+                <h3> Rs. {{ balance_due|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 font-weight-bold"><i class="fas fa-bolt mr-2 text-warning"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body pt-0">
+                    <a href="{% url 'portal-products' %}" class="btn btn-action btn-add-sale">
+                        <i class="fas fa-store mr-2"></i>Browse Products
+                    </a>
+                    <a href="{% url 'portal-orders' %}" class="btn btn-action btn-update-stock">
+                        <i class="fas fa-clipboard-list mr-2"></i>My Orders
+                    </a>
+                    <a href="{% url 'portal-ledger' %}" class="btn btn-action btn-info-action">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i>My Account
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between">
+                    <h5 class="mb-0 font-weight-bold">Recent Orders</h5>
+                    <a href="{% url 'portal-orders' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for order in recent_orders %}
+                    <li class="list-group-item py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="font-weight-bold d-block" style="font-size:.88rem;">{{ order.order_number }}</span>
+                                <small class="text-muted">{{ order.created_at|date:"d M Y" }} · {{ order.item_count }} items</small>
+                            </div>
+                            {% if order.status == 'pending' %}<span class="badge badge-warning">Pending</span>
+                            {% elif order.status == 'confirmed' %}<span class="badge badge-info">Confirmed</span>
+                            {% elif order.status == 'converted' %}<span class="badge badge-success">Fulfilled</span>
+                            {% else %}<span class="badge badge-danger">Cancelled</span>{% endif %}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted" style="font-size:.85rem;">No orders yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recent Invoices -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between">
+                    <h5 class="mb-0 font-weight-bold">Recent Invoices</h5>
+                    <a href="{% url 'portal-ledger' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for inv in recent_invoices %}
+                    <li class="list-group-item py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="font-weight-bold d-block" style="font-size:.88rem;">{{ inv.invoice_number }}</span>
+                                <small class="text-muted"> Rs. {{ inv.total_amount|floatformat:2 }} · {{ inv.sale_date }}</small>
+                            </div>
+                            {% if inv.status == 'paid' %}<span class="badge badge-success">Paid</span>
+                            {% elif inv.status == 'partial' %}<span class="badge badge-warning">Partial</span>
+                            {% else %}<span class="badge badge-danger">Unpaid</span>{% endif %}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted" style="font-size:.85rem;">No invoices yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

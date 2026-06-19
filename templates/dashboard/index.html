@@ -1,0 +1,135 @@
+{% extends "partials/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2 class="text-dark">Overview</h2>
+            <p class="text-muted">Here is what's happening in your store today.</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3 col-sm-6">
+            <div class="card-box bg-gradient-success">
+                <div class="icon"><i class="fas fa-coins"></i></div>
+                <p>Revenue Today</p>
+                <h3> Rs. {{ today_revenue|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card-box bg-gradient-primary">
+                <div class="icon"><i class="fas fa-shopping-basket"></i></div>
+                <p>Today's Sales</p>
+                <h3>{{ today_invoices }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card-box bg-gradient-info">
+                <div class="icon"><i class="fas fa-chart-line"></i></div>
+                <p>Today's Profit</p>
+                <h3> Rs. {{ today_profit|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card-box bg-gradient-warning">
+                <div class="icon"><i class="fas fa-warehouse"></i></div>
+                <p>Stock Value</p>
+                <h3> Rs. {{ stock_value|floatformat:0 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 font-weight-bold">Sales & Expenses (Last 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="140"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0 font-weight-bold">Quick Actions</h5>
+                </div>
+                <div class="card-body pt-0">
+                    <a href="{% url 'sale-list' %}" class="btn btn-action btn-add-sale">
+                        <i class="fas fa-plus-circle mr-2"></i>New Invoice
+                    </a>
+                    <a href="{% url 'purchase-add' %}" class="btn btn-action btn-update-stock">
+                        <i class="fas fa-dolly-flatbed mr-2"></i>Stock In
+                    </a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between">
+                    <h5 class="mb-0 font-weight-bold text-danger">Low Stock</h5>
+                    <span class="badge badge-danger">{{ low_stock_count }}</span>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for product in low_stock_items %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <span style="font-size:.88rem;">{{ product.name }}</span>
+                        <span class="badge badge-warning badge-pill">{{ product.current_stock }} left</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted" style="font-size:.85rem;">All stock levels healthy.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% if recent_sales %}
+    <div class="row">
+        <div class="col-12">
+            <div class="table-container">
+                <h5 class="text-dark mb-3">Recent Sales Today</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead class="thead-light">
+                            <tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in recent_sales %}
+                            <tr>
+                                <td><span class="badge badge-secondary">{{ sale.invoice_number }}</span></td>
+                                <td>{{ sale.customer_name }}</td>
+                                <td> Rs. {{ sale.total_amount|floatformat:2 }}</td>
+                                <td class="text-success"> Rs. {{ sale.paid_amount|floatformat:2 }}</td>
+                                <td>
+                                    {% if sale.status == 'paid' %}<span class="badge badge-success">Paid</span>
+                                    {% elif sale.status == 'partial' %}<span class="badge badge-warning">Partial</span>
+                                    {% else %}<span class="badge badge-danger">Unpaid</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+new Chart(document.getElementById('salesChart').getContext('2d'), {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [
+            { label: 'Sales (Rs.)', data: {{ chart_sales|safe }}, backgroundColor: 'rgba(54,162,235,.15)', borderColor: 'rgba(54,162,235,1)', borderWidth: 2, fill: true, tension: .4 },
+            { label: 'Expenses (Rs.)', data: {{ chart_expenses|safe }}, backgroundColor: 'rgba(255,99,132,.1)', borderColor: 'rgba(255,99,132,1)', borderWidth: 2, borderDash: [5,5], tension: .4 }
+        ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' }}, scales: { y: { beginAtZero: true }}}
+});
+</script>
+{% endblock %}
